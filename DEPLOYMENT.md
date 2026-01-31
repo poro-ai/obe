@@ -44,6 +44,7 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions
 |-------------|------|------------|
 | **GCP_PROJECT_ID** | GCP 專案 ID，用於部署 Cloud Functions | 例如：`obe-project-485614` |
 | **GCP_SA_KEY** | 具備 Cloud Functions 部署權限的服務帳號 **整份 JSON 金鑰內容** | 從 GCP Console 建立服務帳號並下載 JSON，將檔案內容整段貼上 |
+| **GEMINI_API_KEY** | Gemini API 金鑰，供 GCF 呼叫 File API 上傳／解析 PDF | 從 [Google AI Studio](https://aistudio.google.com/apikey) 取得，貼上字串 |
 
 ---
 
