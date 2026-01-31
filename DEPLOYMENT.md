@@ -47,6 +47,33 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions
 
 ---
 
+## GAS 上傳 GCS 時出現 403（Permission denied）
+
+若 GAS doPost 回傳錯誤類似：
+
+```
+GCS upload failed: 403 ... does not have storage.objects.create access ...
+Permission 'storage.objects.create' denied on resource
+```
+
+表示 **GAS 使用的服務帳號**（GAS 指令碼內容中的 `GCP_SA_CLIENT_EMAIL` / `GCP_SA_PRIVATE_KEY`）**沒有**在 GCS bucket（預設 `obe-files`）上建立物件的權限。
+
+**修復**：在 GCP 為該服務帳號授予 bucket 的 **Storage Object Creator**（或 **Storage Admin**）。
+
+```bash
+# 將 YOUR_SA_EMAIL 換成 GAS 用的服務帳號 email（例如 github-deploy-sa@obe-project-485614.iam.gserviceaccount.com）
+# 將 BUCKET 換成實際 bucket 名稱（例如 obe-files）
+
+gcloud storage buckets add-iam-policy-binding gs://BUCKET \
+  --member="serviceAccount:YOUR_SA_EMAIL" \
+  --role="roles/storage.objectCreator" \
+  --project=obe-project-485614
+```
+
+或於 **GCP Console → Cloud Storage → 選擇 bucket → 權限** 新增成員，加入該服務帳號並指派 **Storage Object Creator**。
+
+---
+
 ## 參考
 
 - 部署流程與狀態：`docs/DEPLOYMENT_STATUS.md`
