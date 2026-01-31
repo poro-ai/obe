@@ -8,7 +8,18 @@ from pathlib import Path
 import google.generativeai as genai
 
 from src.clients.config_loader import ConfigLoader
-from src.models.schema import PageExtract
+from src.models.schema import BlockElement, PageBlock, PageExtract
+
+# 結構化解析的 System Instruction：每頁輸出 page + elements（image/text + content + description）
+STRUCTURED_SYSTEM_INSTRUCTION = """你是一個 PDF 結構化解析助手。請分析上傳的 PDF，針對每一頁辨識「圖片」與「文字」區塊，並輸出嚴格符合以下 JSON 格式的陣列（僅輸出 JSON，不要 markdown 包裝或額外說明）：
+
+[{"page": 1, "elements": [{"type": "image", "content": "圖片的 data URI 或可參考的 URI（若無法取得則留空字串）", "description": "該圖片的精簡描述（一句話，供前端顯示）"}, {"type": "text", "content": "該區塊的完整文字內容", "description": ""}]}, ...]
+
+規則：
+- 每頁一個物件，含 "page"（頁碼從 1 開始）與 "elements" 陣列。
+- elements 內每個物件：type 必為 "image" 或 "text"；content 必填（圖片可為空字串若無法取得 URI）；description 圖片必填精簡描述，文字可為空字串。
+- 依頁面從上到下、從左到右的視覺順序排列 elements。
+- 多模態：圖片需有對內容的精簡描述（一句話），以便前端編輯器顯示。"""
 
 
 class GeminiFileClient:
@@ -37,10 +48,18 @@ class GeminiFileClient:
         uploaded = genai.upload_file(path=str(path), mime_type=mime_type)
         return self._wait_for_file_ready(uploaded.name)
 
-    def upload_bytes(self, data: bytes, display_name: str, mime_type: str = "application/pdf") -> str:
+    def upload_bytes(
+        self,
+        data: bytes,
+        display_name: str,
+        mime_type: str = "application/pdf",
+        file_ready_timeout: float = 600.0,
+        poll_interval: float = 2.0,
+    ) -> str:
         """
         上傳 bytes 至 File API（適合從 GCS 讀取後的小塊或中繼資料）。
         genai.upload_file 僅接受 path=，故先寫入暫存檔再上傳。
+        file_ready_timeout: 輪詢等待 ACTIVE 的最長時間（秒），150MB 可設 900。
         """
         suffix = Path(display_name).suffix or ".pdf"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
@@ -48,7 +67,9 @@ class GeminiFileClient:
             path = f.name
         try:
             uploaded = genai.upload_file(path=path, mime_type=mime_type)
-            return self._wait_for_file_ready(uploaded.name)
+            return self._wait_for_file_ready(
+                uploaded.name, poll_interval=poll_interval, timeout=file_ready_timeout
+            )
         finally:
             Path(path).unlink(missing_ok=True)
 
@@ -63,6 +84,60 @@ class GeminiFileClient:
                 raise RuntimeError(f"File upload failed: {file_name}")
             time.sleep(poll_interval)
         raise TimeoutError(f"File not ready within {timeout}s: {file_name}")
+
+    def parse_pdf_structured(self, file_uri: str) -> list[PageBlock]:
+        """
+        以 File API 的 file URI 呼叫 generate_content，使用結構化 System Instruction，
+        回傳每頁的 elements（type: image/text, content, description）供編輯器使用。
+        """
+        file_name = file_uri.replace("https://generativelanguage.googleapis.com/v1beta/", "").strip()
+        if not file_name:
+            raise ValueError("Invalid file_uri: " + file_uri)
+        file_obj = genai.get_file(file_name)
+        model = genai.GenerativeModel(
+            "gemini-2.5-flash",
+            system_instruction=STRUCTURED_SYSTEM_INSTRUCTION,
+        )
+        prompt = "請依 System Instruction 分析此 PDF，輸出每頁的 page 與 elements（圖片與文字塊）JSON 陣列。"
+        response = model.generate_content([prompt, file_obj])
+        return self._parse_response_to_page_blocks(response)
+
+    def _parse_response_to_page_blocks(self, response) -> list[PageBlock]:
+        """將 Gemini 結構化回應轉成 PageBlock 列表。"""
+        blocks: list[PageBlock] = []
+        text = (response.text or "").strip()
+        if not text:
+            return blocks
+        # 去除可能的 markdown 程式碼區塊
+        if text.startswith("```"):
+            lines = text.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
+        try:
+            data = json.loads(text)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and "page" in item:
+                        elts = [
+                            BlockElement(
+                                type=e.get("type", "text"),
+                                content=e.get("content", ""),
+                                description=e.get("description", ""),
+                            )
+                            for e in item.get("elements", [])
+                        ]
+                        blocks.append(PageBlock(page=int(item["page"]), elements=elts))
+        except (json.JSONDecodeError, TypeError, KeyError):
+            blocks.append(
+                PageBlock(
+                    page=1,
+                    elements=[BlockElement(type="text", content=text[:10000], description="")],
+                )
+            )
+        return blocks
 
     def parse_pdf_with_file_uri(self, file_uri: str) -> list[PageExtract]:
         """

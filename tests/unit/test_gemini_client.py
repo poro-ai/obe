@@ -10,7 +10,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from src.clients.gemini_client import GeminiFileClient
-from src.models.schema import PageExtract
+from src.models.schema import BlockElement, PageBlock, PageExtract
 
 
 @pytest.fixture
@@ -140,3 +140,20 @@ def test_upload_bytes_writes_temp_file_and_calls_upload_file(
     call_kw = mock_upload_file.call_args[1]
     assert call_kw.get("mime_type") == "application/pdf"
     assert "generativelanguage.googleapis.com" in uri or "files/" in uri
+
+
+def test_parse_response_to_page_blocks_returns_page_blocks(gemini_client: GeminiFileClient) -> None:
+    """_parse_response_to_page_blocks 將 JSON 陣列轉成 PageBlock 列表。"""
+    mock_response = MagicMock()
+    mock_response.text = '[{"page": 1, "elements": [{"type": "image", "content": "", "description": "圖"}, {"type": "text", "content": "內文", "description": ""}]}]'
+
+    result = gemini_client._parse_response_to_page_blocks(mock_response)
+
+    assert len(result) == 1
+    assert isinstance(result[0], PageBlock)
+    assert result[0].page == 1
+    assert len(result[0].elements) == 2
+    assert result[0].elements[0].type == "image"
+    assert result[0].elements[0].description == "圖"
+    assert result[0].elements[1].type == "text"
+    assert result[0].elements[1].content == "內文"

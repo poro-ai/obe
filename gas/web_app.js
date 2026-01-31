@@ -28,9 +28,8 @@ function doGet(e) {
 
 /**
  * 接收前端 POST（Content-Type: text/plain）。
- * 從 e.postData.contents 讀取原始字串，使用 JSON.parse 解析。
- * 處理邏輯後以 ContentService.createTextOutput 回傳 JSON 字串，並 setMimeType(ContentService.MimeType.JSON)。
- * 外層 try-catch 確保發生錯誤時也回傳 JSON 格式的錯誤訊息。
+ * action=saveToSheets：將 body.pages（編輯器匯出）寫入 Google Sheets，回傳 { success, sheetUrl }。
+ * 無 action 或 pdfBase64：原有流程（上傳 PDF → GCF 解析 → 回傳 pages）。
  */
 function doPost(e) {
   var result = { success: false, statusCode: 500, error: null, count: null, pages: null, version: BACKEND_VERSION };
@@ -49,6 +48,11 @@ function doPost(e) {
       result.statusCode = 400;
       return _jsonOutput(result);
     }
+
+    if (body.action === 'saveToSheets') {
+      return _jsonOutput(_saveToSheets(body));
+    }
+
     var pdfBase64 = body.pdfBase64;
     var fileName = (body.fileName || 'upload.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
     if (!pdfBase64) {
@@ -84,6 +88,61 @@ function doPost(e) {
     result.error = err.toString();
     result.statusCode = 500;
     return _jsonOutput(result);
+  }
+}
+
+/**
+ * 將編輯器匯出的 pages 寫入 Google Sheets。
+ * body.pages: [{ page, elements: [{ type, content, description }] }]
+ * 若未設定 SPREADSHEET_ID 則建立新試算表並寫入。
+ */
+function _saveToSheets(body) {
+  var out = { success: false, statusCode: 500, error: null, sheetUrl: null, version: BACKEND_VERSION };
+  try {
+    var pages = body.pages;
+    if (!pages || !Array.isArray(pages)) {
+      out.error = 'Missing or invalid pages array';
+      out.statusCode = 400;
+      return out;
+    }
+    var spreadsheet;
+    var sheetId = _getProp('SPREADSHEET_ID');
+    if (sheetId) {
+      try {
+        spreadsheet = SpreadsheetApp.openById(sheetId);
+      } catch (err) {
+        spreadsheet = null;
+      }
+    }
+    if (!spreadsheet) {
+      spreadsheet = SpreadsheetApp.create('OBE Editor Export ' + new Date().toISOString().slice(0, 10));
+      PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', spreadsheet.getId());
+    }
+    var sheet = spreadsheet.getSheets()[0];
+    sheet.setName('Export');
+    sheet.clear();
+    sheet.getRange(1, 1, 1, 4).setValues([['Page', 'Type', 'Content', 'Description']]);
+    sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+    var row = 2;
+    for (var p = 0; p < pages.length; p++) {
+      var pageNum = pages[p].page != null ? pages[p].page : (p + 1);
+      var elements = pages[p].elements || [];
+      for (var i = 0; i < elements.length; i++) {
+        var el = elements[i];
+        var content = (el.content || '').toString();
+        if (content.length > 50000) content = content.slice(0, 50000) + '…';
+        sheet.getRange(row, 1, row, 4).setValues([[pageNum, el.type || 'text', content, (el.description || '').toString()]]);
+        row++;
+      }
+    }
+    out.success = true;
+    out.statusCode = 200;
+    out.sheetUrl = spreadsheet.getUrl();
+    return out;
+  } catch (err) {
+    out.error = err.toString();
+    out.statusCode = 500;
+    return out;
   }
 }
 

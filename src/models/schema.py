@@ -3,6 +3,21 @@
 from pydantic import BaseModel, Field
 
 
+class BlockElement(BaseModel):
+    """單一內容塊：圖片或文字，供編輯器渲染。"""
+
+    type: str = Field(..., description="'image' 或 'text'")
+    content: str = Field(..., description="圖片為 base64/uri，文字為內文")
+    description: str = Field(default="", description="圖片精簡描述，文字可為空")
+
+
+class PageBlock(BaseModel):
+    """單頁結構化解析結果：頁碼 + 元素列表。"""
+
+    page: int = Field(..., ge=1, description="頁碼，從 1 開始")
+    elements: list[BlockElement] = Field(default_factory=list, description="該頁的圖片與文字塊")
+
+
 class PageExtract(BaseModel):
     """單頁或單一圖文區塊的解析結果。"""
 

@@ -130,10 +130,11 @@
               setProgress(100, '完成');
               var count = resData.count != null ? resData.count : (resData.pages && resData.pages.length);
               console.log('[GAS 回傳] 解析成功，筆數:', count, 'data:', resData);
-              showResult(
-                '成功。共 ' + (count || 0) + ' 筆頁面。\n\n' +
-                JSON.stringify(resData, null, 2)
-              );
+              try { sessionStorage.setItem('obe_parse_result', JSON.stringify(resData)); } catch (e) {}
+              resultEl.className = '';
+              var jsonStr = JSON.stringify(resData, null, 2);
+              var escaped = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              resultEl.innerHTML = '<p>成功。共 ' + (count || 0) + ' 筆頁面。</p><p><a href="editor.html" target="_blank" rel="noopener">在編輯器中開啟 →</a></p><pre style="white-space:pre-wrap;font-size:0.9rem;margin:0;">' + escaped + '</pre>';
             } else {
               console.warn('[GAS 回傳] 錯誤:', status, resData);
               showResult('錯誤 ' + status + ': ' + (resData.error || resData.message || responseText), true);
