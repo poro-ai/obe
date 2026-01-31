@@ -57,7 +57,8 @@ function doPost(e) {
     var prefix = 'uploads/' + new Date().getTime() + '_';
     var objectName = prefix + fileName;
 
-    var pdfBlob = Utilities.newBlob(Utilities.base64Decode(pdfBase64), 'application/pdf', fileName);
+    var pdfBytes = Utilities.base64Decode(pdfBase64);
+    var pdfBlob = Utilities.newBlob(pdfBytes, 'application/pdf', fileName);
     _uploadToGcs(pdfBlob, bucket, objectName);
 
     var gcfUrl = _getProp('GCF_PARSE_PDF_URL') || 'https://asia-east1-obe-project-485614.cloudfunctions.net/parse_pdf';
