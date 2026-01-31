@@ -1,0 +1,18 @@
+﻿# 憭批?/鈭脖?????嚗?蝝 Cursor 蝝Ｗ?嚗?*.pdf
+*.ppt
+*.pptx
+*.xlsx
+*.xls
+*.csv
+
+# 靘陷?翰??venv/
+.venv/
+ENV/
+env/
+__pycache__/
+node_modules/
+
+# ??.gitignore ?郊?
+.env
+.env.*
+.clasp.json

@@ -1,0 +1,37 @@
+# OBE-Project 開發守則
+
+## 架構規範：Service Layer Pattern
+
+1. **Clients 層 (src/clients/)**
+   - 僅封裝對外 API 呼叫與 I/O 邏輯。
+   - 不包含業務判斷，只負責：呼叫 Gemini File API、GCS 讀寫、HTTP 等。
+   - 大檔案（約 150MB）**必須**透過 **Gemini File API** 上傳與解析，不得在記憶體中一次性載入整份 PDF。
+
+2. **Services 層 (src/services/)**
+   - 所有業務邏輯置於此層。
+   - 編排 clients 的呼叫順序、錯誤處理、資料轉換、流程控制。
+   - 不直接依賴 HTTP 或儲存體實作細節。
+
+3. **Models 層 (src/models/)**
+   - 使用 Pydantic 定義請求/回應與領域資料結構。
+   - 保持純資料模型，不含 I/O 或業務邏輯。
+
+## 檔案與 API 使用
+
+- 150MB 等級的圖文 PDF：一律使用 **Gemini File API**（上傳 → 輪詢狀態 → 以 file URI 進行 generate_content），禁止用 base64 或單次載入整檔至記憶體。
+
+## 程式風格
+
+- 型別標註（type hints）需完整。
+- 新功能需對應單元測試（tests/unit）或整合測試（tests/integration）。
+
+## 對話與 Session 管理
+
+- 每次啟動新對話或任務完成時，Agent 必須主動建議或自動為此 Session 重新命名，以確保在 History（時鐘圖示）中清晰可見。
+
+## 持久化規範 (Session Persistence)
+
+- **Session Persistence:** Agent 必須確保所有開發邏輯具備連續性。
+- **Auto-Naming:** 每個新的對話開始時，Agent 必須根據當前任務（如 GAS 開發、GCP 設定）自動為該對話命名，嚴禁使用預設的 'New Chat'。
+- **History Visibility:** 提醒使用者定期點擊右上角的歷史圖示（或使用指令面板搜尋 Recent）來切換對話。
+- **Context Awareness:** 每次重啟專案時，主動引導使用者接續上一次未完成的 Agent 任務。

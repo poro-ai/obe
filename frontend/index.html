@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBE-Project｜PDF 解析（GCF 後端）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 560px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input, button { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    button { margin-top: 1rem; cursor: pointer; background: #1a73e8; color: #fff; border: none; border-radius: 4px; }
+    button:hover { background: #1557b0; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #result { margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 4px; white-space: pre-wrap; font-size: 0.9rem; }
+    .error { color: #c5221f; }
+  </style>
+</head>
+<body>
+  <h1>PDF 解析（後端 GCF）</h1>
+  <p>輸入 GCS 的 bucket 與 PDF 路徑，呼叫後端 Cloud Function 解析。</p>
+
+  <label for="apiUrl">後端 API 網址（GCF 部署後的 URL）</label>
+  <input id="apiUrl" type="url" placeholder="https://xxx.run.app/parse_pdf" />
+
+  <label for="bucket">GCS Bucket 名稱</label>
+  <input id="bucket" type="text" placeholder="my-bucket" />
+
+  <label for="blobPath">PDF 在 GCS 中的路徑（blob_path）</label>
+  <input id="blobPath" type="text" placeholder="path/to/file.pdf" />
+
+  <button id="submit" type="button">送出解析請求</button>
+
+  <div id="result"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

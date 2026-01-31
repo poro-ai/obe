@@ -1,0 +1,42 @@
+# OBE-Project：部署 GCF（150MB PDF 解析用，1Gi / 540s）
+name: Deploy to Google Cloud Functions
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FUNCTION_NAME: parse_pdf
+  REGION: us-central1
+  RUNTIME: python311
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Functions
+        run: |
+          gcloud functions deploy ${{ env.FUNCTION_NAME }} \
+            --gen2 \
+            --runtime=${{ env.RUNTIME }} \
+            --region=${{ env.REGION }} \
+            --source=. \
+            --entry-point=parse_pdf \
+            --trigger-http \
+            --memory=1Gi \
+            --timeout=540s \
+            --allow-unauthenticated \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}

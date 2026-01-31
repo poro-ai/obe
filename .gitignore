@@ -1,0 +1,65 @@
+# 環境變數與金鑰（避免外流）
+.env
+.env.local
+.env.*.local
+*.pem
+
+# clasp 測試環境（避免 scriptId 外流）
+.clasp.json
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虛擬環境
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / 編輯器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 測試與覆蓋率
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 大型/二進位與資料檔（建議放 GCS，勿提交）
+*.pdf
+*.ppt
+*.pptx
+*.xlsx
+*.xls
+*.csv
+
+# 作業系統
+.DS_Store
+Thumbs.db

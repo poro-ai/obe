@@ -1,0 +1,12 @@
+{
+  "name": "obe-project",
+  "version": "1.0.0",
+  "description": "OBE-Project: GCF + GAS 測試環境",
+  "scripts": {
+    "gas:push": "clasp push",
+    "gas:deploy:test": "node -e \"require('child_process').execSync('npx clasp push',{stdio:'inherit'})\""
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.0"
+  }
+}
