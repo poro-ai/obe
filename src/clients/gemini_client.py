@@ -67,14 +67,14 @@ class GeminiFileClient:
     def parse_pdf_with_file_uri(self, file_uri: str) -> list[PageExtract]:
         """
         以 File API 回傳的 file URI 呼叫 generate_content，解析 PDF 並回傳結構化結果。
-        實際 prompt 與解析邏輯可依需求擴充。
+        google.generativeai 無 genai.types.Part，改以 genai.get_file(file_name) 取得檔案物件傳入。
         """
-        response = self._model.generate_content(
-            [
-                "請分析此 PDF，針對每一頁或每個圖文區塊，輸出：group_id、視覺摘要(visual_summary)、對應文字(associated_text)、頁碼(page_number)。",
-                genai.types.Part.from_uri(file_uri=file_uri, mime_type="application/pdf"),
-            ]
-        )
+        file_name = file_uri.replace("https://generativelanguage.googleapis.com/v1beta/", "").strip()
+        if not file_name:
+            raise ValueError("Invalid file_uri: " + file_uri)
+        file_obj = genai.get_file(file_name)
+        prompt = "請分析此 PDF，針對每一頁或每個圖文區塊，輸出：group_id、視覺摘要(visual_summary)、對應文字(associated_text)、頁碼(page_number)。"
+        response = self._model.generate_content([prompt, file_obj])
         return self._parse_response_to_page_extracts(response)
 
     def _parse_response_to_page_extracts(self, response) -> list[PageExtract]:
