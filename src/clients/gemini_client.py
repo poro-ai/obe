@@ -10,16 +10,19 @@ import google.generativeai as genai
 from src.clients.config_loader import ConfigLoader
 from src.models.schema import BlockElement, PageBlock, PageExtract
 
-# 結構化解析的 System Instruction：每頁輸出 page + elements（image/text + content + description）
-STRUCTURED_SYSTEM_INSTRUCTION = """你是一個 PDF 結構化解析助手。請分析上傳的 PDF，針對每一頁辨識「圖片」與「文字」區塊，並輸出嚴格符合以下 JSON 格式的陣列（僅輸出 JSON，不要 markdown 包裝或額外說明）：
+# 結構化解析的 System Instruction：每頁輸出 page + elements（page_number, type, content, summary）
+STRUCTURED_SYSTEM_INSTRUCTION = """你是一個 PDF 結構化解析助手。
 
-[{"page": 1, "elements": [{"type": "image", "content": "圖片的 data URI 或可參考的 URI（若無法取得則留空字串）", "description": "該圖片的精簡描述（一句話，供前端顯示）"}, {"type": "text", "content": "該區塊的完整文字內容", "description": ""}]}, ...]
+請解析此 PDF，將每一頁的「圖片」與「文字內容」提取出來。針對圖片，請給予 20 字內的精簡描述。請確保圖文對應關係正確。
+
+輸出格式：嚴格返回 JSON 陣列（僅輸出 JSON，不要 markdown 包裝或額外說明）：
+
+[{"page": 1, "elements": [{"type": "image", "content": "圖片的 GCS URL 或 data URI（若無法取得則留空字串）", "description": "20字內精簡描述"}, {"type": "text", "content": "該區塊的完整文字內容", "description": ""}]}, ...]
 
 規則：
 - 每頁一個物件，含 "page"（頁碼從 1 開始）與 "elements" 陣列。
-- elements 內每個物件：type 必為 "image" 或 "text"；content 必填（圖片可為空字串若無法取得 URI）；description 圖片必填精簡描述，文字可為空字串。
-- 依頁面從上到下、從左到右的視覺順序排列 elements。
-- 多模態：圖片需有對內容的精簡描述（一句話），以便前端編輯器顯示。"""
+- elements 內：type 必為 "image" 或 "text"；content 必填（圖片可為 GCS URL 或空字串）；description 圖片必填 20 字內精簡描述，文字可為空字串。
+- 依頁面從上到下、從左到右的視覺順序排列，圖文對應正確。"""
 
 
 class GeminiFileClient:
@@ -125,11 +128,11 @@ class GeminiFileClient:
                             BlockElement(
                                 type=e.get("type", "text"),
                                 content=e.get("content", ""),
-                                description=e.get("description", ""),
+                                description=e.get("description", "") or e.get("summary", ""),
                             )
                             for e in item.get("elements", [])
                         ]
-                        blocks.append(PageBlock(page=int(item["page"]), elements=elts))
+                        blocks.append(PageBlock(page=int(item.get("page", item.get("page_number", 1))), elements=elts))
         except (json.JSONDecodeError, TypeError, KeyError):
             blocks.append(
                 PageBlock(

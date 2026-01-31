@@ -6,32 +6,43 @@
   <title>AI 解析</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* 側邊欄寬度適配，進度條過渡 */
     #progress-bar { transition: width 0.25s ease-out; }
     .btn-upload { background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); border: 1px solid #dee2e6; }
     .btn-upload:hover { background: linear-gradient(180deg, #e9ecef 0%, #dee2e6 100%); }
+    .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
+    .accordion-content.open { max-height: 2000px; }
+    .filter-tab.active { background: #e5e7eb; font-weight: 600; }
+    .card-preview { min-height: 48px; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 text-sm antialiased min-h-screen flex flex-col">
   <div class="p-3 flex flex-col gap-3 flex-1 min-w-0">
-    <!-- 頂部：隱藏 file input + 上傳 PDF 按鈕 -->
     <input type="file" id="file-input" accept=".pdf,application/pdf" class="hidden" />
     <button type="button" id="btn-upload" class="btn-upload w-full py-2.5 px-3 rounded-lg font-medium text-gray-700 shadow-sm border border-gray-200 hover:shadow">
       📄 上傳 PDF
     </button>
 
-    <!-- 進度區：動態進度條與狀態文字 -->
     <div id="progress-area" class="hidden rounded-lg overflow-hidden bg-gray-200 border border-gray-200">
       <div id="progress-bar" class="h-2 bg-blue-500 w-0" style="max-width: 100%;"></div>
       <p id="progress-text" class="px-2 py-1.5 text-gray-600 text-xs">準備中...</p>
     </div>
 
-    <!-- 解析結果容器 -->
+    <!-- 類型過濾：全部 / 僅圖片 / 僅文字 -->
+    <div id="filter-area" class="hidden flex gap-1 rounded-lg border border-gray-200 bg-white p-1">
+      <button type="button" class="filter-tab active flex-1 py-1.5 px-2 rounded text-xs" data-filter="all">全部</button>
+      <button type="button" class="filter-tab flex-1 py-1.5 px-2 rounded text-xs" data-filter="image">僅圖片</button>
+      <button type="button" class="filter-tab flex-1 py-1.5 px-2 rounded text-xs" data-filter="text">僅文字</button>
+    </div>
+
+    <button type="button" id="btn-insert" class="hidden w-full py-2 px-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+      插入選取項目至投影片
+    </button>
+
     <div class="flex-1 min-h-0 flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
       <div class="px-2 py-1.5 bg-gray-100 border-b border-gray-200 text-gray-600 font-medium text-xs">
         解析結果
       </div>
-      <div id="content-list" class="flex-1 overflow-y-auto p-2 space-y-2 min-h-[120px]">
+      <div id="content-list" class="flex-1 overflow-y-auto p-2 space-y-1 min-h-[120px]">
         <p class="text-gray-400 text-xs py-4 text-center">上傳 PDF 後將在此顯示 AI 解析結果</p>
       </div>
     </div>
@@ -45,42 +56,19 @@
       var progressBar = document.getElementById('progress-bar');
       var progressText = document.getElementById('progress-text');
       var contentList = document.getElementById('content-list');
+      var filterArea = document.getElementById('filter-area');
+      var btnInsert = document.getElementById('btn-insert');
+      var currentFilter = 'all';
+      var pagesData = [];
 
       function setProgress(percent, text) {
         progressArea.classList.remove('hidden');
         progressBar.style.width = (percent || 0) + '%';
         progressText.textContent = text || '';
       }
-
       function hideProgress() {
         progressArea.classList.add('hidden');
         progressBar.style.width = '0';
-      }
-
-      function renderResult(pages) {
-        if (!pages || pages.length === 0) {
-          contentList.innerHTML = '<p class="text-gray-400 text-xs py-4 text-center">無解析內容</p>';
-          return;
-        }
-        var html = '';
-        for (var p = 0; p < pages.length; p++) {
-          var page = pages[p];
-          var pageNum = page.page != null ? page.page : (page.page_number != null ? page.page_number : (p + 1));
-          html += '<div class="rounded border border-gray-200 bg-gray-50 p-2">';
-          html += '<div class="text-gray-500 text-xs font-medium mb-1">第 ' + pageNum + ' 頁</div>';
-          var elements = page.elements || (page.associated_text != null ? [{ type: 'text', content: page.associated_text, description: page.visual_summary || '' }] : []);
-          for (var i = 0; i < elements.length; i++) {
-            var el = elements[i];
-            var type = el.type === 'image' ? 'image' : 'text';
-            html += '<div class="text-xs mt-1 p-1.5 rounded bg-white border border-gray-100">';
-            html += '<span class="text-gray-400">' + (type === 'image' ? '圖' : '文') + '</span> ';
-            if (el.description) html += '<span class="text-gray-600">' + escapeHtml(el.description) + '</span>';
-            if (el.content && type === 'text') html += '<div class="mt-0.5 text-gray-700 break-words">' + escapeHtml((el.content || '').slice(0, 200)) + (el.content.length > 200 ? '…' : '') + '</div>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-        contentList.innerHTML = html;
       }
 
       function escapeHtml(s) {
@@ -90,28 +78,124 @@
         return div.innerHTML;
       }
 
-      btnUpload.addEventListener('click', function () {
-        fileInput.click();
+      function firstTwoLines(str) {
+        if (!str) return '';
+        var lines = str.replace(/\r\n/g, '\n').split('\n').slice(0, 2);
+        return lines.join(' ').slice(0, 80) + (lines.join('').length > 80 ? '…' : '');
+      }
+
+      function renderResult(pages) {
+        pagesData = pages || [];
+        if (!pagesData.length) {
+          contentList.innerHTML = '<p class="text-gray-400 text-xs py-4 text-center">無解析內容</p>';
+          filterArea.classList.add('hidden');
+          btnInsert.classList.add('hidden');
+          return;
+        }
+        filterArea.classList.remove('hidden');
+        btnInsert.classList.remove('hidden');
+        applyFilterAndRender();
+      }
+
+      function applyFilterAndRender() {
+        var html = '';
+        for (var pi = 0; pi < pagesData.length; pi++) {
+          var page = pagesData[pi];
+          var pageNum = page.page != null ? page.page : (page.page_number != null ? page.page_number : (pi + 1));
+          var elements = page.elements || (page.associated_text != null ? [{ type: 'text', content: page.associated_text, description: page.visual_summary || '' }] : []);
+          var withIndex = [];
+          elements.forEach(function (el, ei) {
+            if (currentFilter === 'all') withIndex.push({ el: el, ei: ei });
+            else if (currentFilter === 'image' && el.type === 'image') withIndex.push({ el: el, ei: ei });
+            else if (currentFilter === 'text' && el.type !== 'image') withIndex.push({ el: el, ei: ei });
+          });
+          if (withIndex.length === 0) continue;
+
+          html += '<div class="accordion-page border border-gray-200 rounded overflow-hidden" data-page-index="' + pi + '">';
+          html += '<button type="button" class="accordion-trigger w-full text-left px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-xs font-medium flex items-center justify-between">';
+          html += '<span>第 ' + pageNum + ' 頁</span>';
+          html += '<span class="accordion-arrow text-gray-500">▼</span>';
+          html += '</button>';
+          html += '<div class="accordion-content">';
+          html += '<div class="p-1.5 space-y-1 bg-white">';
+          for (var i = 0; i < withIndex.length; i++) {
+            var item = withIndex[i];
+            var el = item.el;
+            var isImg = el.type === 'image';
+            html += '<label class="flex gap-2 p-1.5 rounded border border-gray-100 hover:bg-gray-50 card-preview cursor-pointer">';
+            html += '<input type="checkbox" class="element-check mt-0.5" data-page-index="' + pi + '" data-el-index="' + item.ei + '" />';
+            if (isImg) {
+              var src = el.content && (el.content.indexOf('data:') === 0 || el.content.indexOf('http') === 0) ? el.content : '';
+              if (src) html += '<img class="w-12 h-12 object-cover rounded flex-shrink-0" src="' + src.replace(/"/g, '&quot;') + '" alt="" />';
+              else html += '<div class="w-12 h-12 rounded bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">圖</div>';
+              html += '<div class="min-w-0 flex-1"><p class="text-xs text-gray-600 truncate">' + escapeHtml((el.description || el.summary || '').slice(0, 40)) + '</p></div>';
+            } else {
+              html += '<div class="min-w-0 flex-1"><p class="text-xs text-gray-700 line-clamp-2">' + escapeHtml(firstTwoLines(el.content)) + '</p></div>';
+            }
+            html += '</label>';
+          }
+          html += '</div></div></div>';
+        }
+        contentList.innerHTML = html || '<p class="text-gray-400 text-xs py-2 text-center">無符合項目</p>';
+
+        var triggers = contentList.querySelectorAll('.accordion-trigger');
+        triggers.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var content = btn.nextElementSibling;
+            content.classList.toggle('open');
+            var arrow = btn.querySelector('.accordion-arrow');
+            arrow.textContent = content.classList.contains('open') ? '▲' : '▼';
+          });
+        });
+      }
+
+      filterArea.querySelectorAll('.filter-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          filterArea.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentFilter = btn.getAttribute('data-filter');
+          applyFilterAndRender();
+        });
       });
+
+      function getSelectedElements() {
+        var out = [];
+        contentList.querySelectorAll('.element-check:checked').forEach(function (cb) {
+          var pi = parseInt(cb.getAttribute('data-page-index'), 10);
+          var ei = parseInt(cb.getAttribute('data-el-index'), 10);
+          if (pagesData[pi] && pagesData[pi].elements && pagesData[pi].elements[ei])
+            out.push(pagesData[pi].elements[ei]);
+        });
+        return out;
+      }
+
+      btnInsert.addEventListener('click', function () {
+        var selected = getSelectedElements();
+        if (selected.length === 0) {
+          if (typeof google !== 'undefined' && google.script && google.script.run)
+            google.script.run.withFailureHandler(function (m) { progressText.textContent = m || '請先勾選項目'; }).insertElementsToSlide([]);
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(function () { progressText.textContent = '已插入 ' + selected.length + ' 項'; })
+          .withFailureHandler(function (err) { progressText.textContent = '插入失敗：' + (err.message || err); })
+          .insertElementsToSlide(selected);
+      });
+
+      btnUpload.addEventListener('click', function () { fileInput.click(); });
 
       fileInput.addEventListener('change', function () {
         var file = fileInput.files[0];
         if (!file) return;
         if (file.type !== 'application/pdf') {
-          progressText.textContent = '請選擇 PDF 檔案';
           setProgress(0, '請選擇 PDF 檔案');
           return;
         }
-
         setProgress(10, '正在讀取檔案...');
         var reader = new FileReader();
         reader.onload = function () {
-          var dataUrl = reader.result;
-          var base64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
-          if (!base64) {
-            setProgress(0, '讀取失敗');
-            return;
-          }
+          var base64 = (reader.result || '').indexOf(',') >= 0 ? reader.result.split(',')[1] : reader.result;
+          if (!base64) { setProgress(0, '讀取失敗'); return; }
           setProgress(30, '正在上傳雲端...');
           google.script.run
             .withSuccessHandler(function (uploaded) {
@@ -142,9 +226,7 @@
             })
             .uploadToGcs(base64, file.name);
         };
-        reader.onerror = function () {
-          setProgress(0, '讀取檔案失敗');
-        };
+        reader.onerror = function () { setProgress(0, '讀取檔案失敗'); };
         reader.readAsDataURL(file);
         fileInput.value = '';
       });

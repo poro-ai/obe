@@ -19,8 +19,8 @@ from src.services.file_handler import FileHandler
 
 logger = logging.getLogger(__name__)
 
-# 大檔案（如 150MB）輪詢等待時間（秒）
-DEFAULT_FILE_READY_TIMEOUT = 900.0
+# 大檔案（如 150MB）輪詢等待時間（秒），配合 GCF 540s Timeout
+DEFAULT_FILE_READY_TIMEOUT = 540.0
 DEFAULT_POLL_INTERVAL = 2.0
 
 

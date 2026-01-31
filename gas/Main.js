@@ -77,6 +77,91 @@ function uploadAndProcess(fileDataBase64, fileName) {
 }
 
 /**
+ * 將側邊欄選取的解析元素插入目前投影片。
+ * @param {Array<{type: string, content: string, description: string}>} elements - 選取的元素列表
+ * 圖片：置於左側，寬度為投影片 30%；文字：置於圖片右側，微軟正黑體 14pt；連續插入時向下位移 50pt。
+ */
+function insertElementsToSlide(elements) {
+  if (!elements || elements.length === 0) {
+    return;
+  }
+  var presentation = SlidesApp.getActivePresentation();
+  var selection = presentation.getSelection();
+  var currentPage = selection.getCurrentPage();
+  if (!currentPage) {
+    var slides = presentation.getSlides();
+    currentPage = slides.length > 0 ? slides[0] : null;
+  }
+  if (!currentPage) {
+    throw new Error('無法取得目前投影片');
+  }
+  var slide = currentPage.asSlide();
+  var pageWidth = 720;
+  var pageHeight = 405;
+  var marginLeft = 20;
+  var imageWidth = Math.round(pageWidth * 0.3);
+  var imageHeight = 162;
+  var textLeft = marginLeft + imageWidth + 10;
+  var textWidth = pageWidth - textLeft - marginLeft;
+  var textHeight = 80;
+  var rowOffset = 50;
+  var offsetY = 20;
+
+  for (var i = 0; i < elements.length; i++) {
+    var el = elements[i];
+    var type = (el.type || 'text').toLowerCase();
+    var content = (el.content || '').toString();
+    var desc = (el.description || el.summary || '').toString();
+
+    if (type === 'image') {
+      try {
+        var blob = null;
+        var imageSource = null;
+        if (content.indexOf('data:') === 0) {
+          var comma = content.indexOf(',');
+          if (comma >= 0) {
+            var b64 = content.substring(comma + 1);
+            var mime = 'image/png';
+            if (content.indexOf('image/jpeg') >= 0 || content.indexOf('image/jpg') >= 0) mime = 'image/jpeg';
+            blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, 'img');
+            imageSource = blob;
+          }
+        } else if (content.indexOf('http') === 0) {
+          imageSource = content;
+        }
+        if (imageSource) {
+          slide.insertImage(imageSource, marginLeft, offsetY, imageWidth, imageHeight);
+        }
+      } catch (imgErr) {
+        Logger.log('insertElementsToSlide image skip: ' + imgErr.toString());
+      }
+      var textToShow = desc || '(圖片)';
+      var tb = slide.insertTextBox(textToShow, textLeft, offsetY, textWidth, textHeight);
+      try {
+        var tr = tb.getText();
+        if (tr && tr.getTextStyle) {
+          tr.getTextStyle().setFontFamily('Microsoft JhengHei');
+          tr.getTextStyle().setFontSize(14);
+        }
+      } catch (e) {}
+      offsetY += rowOffset;
+    } else {
+      var txt = content || desc || '';
+      if (txt.length > 500) txt = txt.substring(0, 500) + '…';
+      var box = slide.insertTextBox(txt, marginLeft, offsetY, pageWidth - marginLeft * 2, textHeight);
+      try {
+        var textRange = box.getText();
+        if (textRange && textRange.getTextStyle) {
+          textRange.getTextStyle().setFontFamily('Microsoft JhengHei');
+          textRange.getTextStyle().setFontSize(14);
+        }
+      } catch (e) {}
+      offsetY += rowOffset;
+    }
+  }
+}
+
+/**
  * GCF 橋接測試：使用 UrlFetchApp 呼叫已部署的 parse_pdf，驗證 GAS 能否連上 GCF。
  * 在 GAS 編輯器選取此函數後執行，從「執行紀錄」查看結果。
  */

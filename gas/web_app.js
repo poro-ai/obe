@@ -11,7 +11,7 @@
  *   GCS_BUCKET           - 選填，預設 obe-files
  *   GCF_PARSE_PDF_URL    - 選填，預設 asia-east1 的 parse_pdf URL
  */
-var BACKEND_VERSION = '1.0.1';
+var BACKEND_VERSION = '1.0.3';
 
 function doGet(e) {
   var params = e && e.parameter ? e.parameter : {};
