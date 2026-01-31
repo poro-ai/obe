@@ -99,9 +99,14 @@ function _getProp(key) {
   }
 }
 
-/** Base64url 編碼（無 padding，+ -> -, / -> _） */
+/**
+ * Base64url 編碼（無 padding，+ -> -, / -> _）。
+ * 第一個參數為位元組陣列時，base64Encode 僅接受一個參數，不可傳 Charset。
+ * 此結果用於 JWT 的 assertion（POST body），非 URL 路徑，故以 replace 轉成 base64url 即可，無須 base64EncodeWebSafe。
+ */
 function _base64UrlEncode(str) {
-  var raw = Utilities.base64Encode(Utilities.newBlob(str).getBytes(), Utilities.Charset.UTF_8);
+  var bytes = Utilities.newBlob(str).getBytes();
+  var raw = Utilities.base64Encode(bytes);
   return raw.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
