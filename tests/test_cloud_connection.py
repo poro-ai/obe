@@ -2,7 +2,7 @@
 """
 GCF parse_pdf 全路徑連線測試：對已部署的 Cloud Function 發送 POST，驗證是否可連上。
 使用方式：python tests/test_cloud_connection.py [BASE_URL]
-預設 URL：https://us-central1-obe-project-485614.cloudfunctions.net/parse_pdf
+預設 URL：https://asia-east1-obe-project-485614.cloudfunctions.net/parse_pdf
 """
 import json
 import os
@@ -14,7 +14,7 @@ except ImportError:
     print("請先安裝 requests: pip install requests")
     sys.exit(1)
 
-DEFAULT_URL = "https://us-central1-obe-project-485614.cloudfunctions.net/parse_pdf"
+DEFAULT_URL = "https://asia-east1-obe-project-485614.cloudfunctions.net/parse_pdf"
 
 
 def test_parse_pdf_connection(base_url: str | None = None) -> bool:

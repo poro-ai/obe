@@ -43,4 +43,4 @@ echo "完成。Cloud Functions、Cloud Build、Eventarc、Cloud Run、Secret Man
 echo "若要檢查已部署的函式："
 echo "  gcloud functions list --project=$PROJECT_ID --gen2"
 echo "若要查看單一函式："
-echo "  gcloud functions describe parse_pdf --region=us-central1 --gen2 --project=$PROJECT_ID"
+echo "  gcloud functions describe parse_pdf --region=asia-east1 --gen2 --project=$PROJECT_ID"

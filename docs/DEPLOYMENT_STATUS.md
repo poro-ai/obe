@@ -47,7 +47,7 @@
   2. 設定專案：`gcloud config set project YOUR_PROJECT_ID`
   3. 驗證權限與函式（若已部署）：
      - `gcloud functions list --project=YOUR_PROJECT_ID`（Gen2 可能需加 `--v2` 或依 SDK 版本）
-     - `gcloud functions describe parse_pdf --region=us-central1 --project=YOUR_PROJECT_ID`（依實際 region 調整）
+     - `gcloud functions describe parse_pdf --region=asia-east1 --project=YOUR_PROJECT_ID`（依實際 region 調整）
 
 ### 若出現「API 未開啟」錯誤
 

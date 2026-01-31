@@ -10,7 +10,7 @@ function main() {
  * 在 GAS 編輯器選取此函數後執行，從「執行紀錄」查看結果。
  */
 function testCloudCall() {
-  var url = 'https://us-central1-obe-project-485614.cloudfunctions.net/parse_pdf';
+  var url = 'https://asia-east1-obe-project-485614.cloudfunctions.net/parse_pdf';
   var payload = JSON.stringify({
     bucket: 'obe-files',
     blob_path: 'test/connection-check.pdf'

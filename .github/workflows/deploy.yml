@@ -8,7 +8,7 @@ on:
 
 env:
   FUNCTION_NAME: parse_pdf
-  REGION: us-central1
+  REGION: asia-east1
   RUNTIME: python311
 
 jobs:
