@@ -40,3 +40,21 @@ jobs:
             --project=${{ secrets.GCP_PROJECT_ID }}
         env:
           CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Post-deployment check (parse_pdf liveness)
+        run: |
+          URL="https://${{ env.REGION }}-${{ secrets.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.FUNCTION_NAME }}"
+          echo "Testing GCF URL: $URL"
+          HTTP_CODE=$(curl -s -o /tmp/gcf_response.txt -w "%{http_code}" -X POST "$URL" \
+            -H "Content-Type: application/json" \
+            -d '{"bucket":"obe-files","blob_path":"test/connection-check.pdf"}' \
+            --max-time 60)
+          echo "Response HTTP code: $HTTP_CODE"
+          cat /tmp/gcf_response.txt
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 600 ]; then
+            echo "GCF endpoint responded (liveness OK)."
+            exit 0
+          else
+            echo "GCF liveness check failed (no valid response)."
+            exit 1
+          fi
