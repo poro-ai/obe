@@ -1,5 +1,26 @@
 # 部署備忘：GitHub Secrets 與連結
 
+## GitHub Actions 只部署 GCF，不部署 GAS
+
+- **push 到 main 時**：`.github/workflows/deploy.yml` 會執行，僅部署 **Google Cloud Function (parse_pdf)** 到 GCP，不會更新 **Google Apps Script (GAS)**。
+- **GAS 程式碼**（`gas/` 目錄）需在本機執行 **`npx @google/clasp push`** 才會同步到 script.google.com。
+- 原因：GAS 部署需 clasp 登入與 `.clasp.json`（scriptId），該檔在 .gitignore 且 CI 無 clasp 憑證，故未納入 workflow。
+
+**標準流程（commit + clasp + push）**：每次改動後建議一併執行 Git 提交、GAS 推送、GitHub 推送：
+```bash
+# 一鍵（Windows PowerShell）
+.\scripts\commit-push-and-clasp.ps1 "你的 commit 訊息"
+
+# 一鍵（macOS/Linux）
+./scripts/commit-push-and-clasp.sh "你的 commit 訊息"
+
+# 或分步
+git add -A && git commit -m "..." && npx @google/clasp push && git push origin main
+```
+助理在執行「commit and push」時會一併執行 clasp push。
+
+---
+
 ## 無法代為開啟瀏覽器
 
 Cursor 無法代你開啟瀏覽器。請自行在瀏覽器開啟下列網址：

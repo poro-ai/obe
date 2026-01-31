@@ -1,4 +1,6 @@
 # OBE-Project：部署 GCF（150MB PDF 解析用，1Gi / 540s）
+# 注意：本 workflow 僅部署「Google Cloud Function (parse_pdf)」，不會更新 Google Apps Script (GAS)。
+# GAS 程式碼在 gas/ 目錄，需在本機執行 npx @google/clasp push 才會同步到 script.google.com。
 name: Deploy to Google Cloud Functions
 
 on:
@@ -58,3 +60,8 @@ jobs:
             echo "GCF liveness check failed (no valid response)."
             exit 1
           fi
+
+      - name: Reminder - GAS not deployed by this workflow
+        run: |
+          echo "::notice:: 本 workflow 僅部署 GCF。Google Apps Script (gas/) 未在此更新。"
+          echo "若需更新 GAS 程式碼，請在本機執行: npx @google/clasp push"
