@@ -1,8 +1,8 @@
 /**
  * 前端與 GAS doPost 通訊：以 Base64 上傳 PDF，顯示進度條，並顯示 GAS 回傳的 GCF 解析結果。
  * 使用 fetch，Content-Type: text/plain;charset=utf-8 以避開 CORS 預檢（OPTIONS），mode: 'cors'，body 為 JSON.stringify。
+ * 版本：每次有更動請遞增 index.html 的 meta name="version" content，與後端版本比對以確認是否為最新。
  */
-
 (function () {
   var gasUrlEl = document.getElementById('gasUrl');
   var fileEl = document.getElementById('file');
@@ -12,6 +12,39 @@
   var progressBar = document.getElementById('progressBar');
   var progressText = document.getElementById('progressText');
   var resultEl = document.getElementById('result');
+  var frontendVersionEl = document.getElementById('frontendVersion');
+  var backendVersionEl = document.getElementById('backendVersion');
+
+  var metaVersion = document.querySelector('meta[name="version"]');
+  var FRONTEND_VERSION = (metaVersion && metaVersion.getAttribute('content')) || '—';
+  frontendVersionEl.textContent = FRONTEND_VERSION;
+
+  function setBackendVersion(version) {
+    if (backendVersionEl) backendVersionEl.textContent = version || '—';
+  }
+
+  function fetchBackendVersion() {
+    var gasUrl = (gasUrlEl.value || '').trim();
+    if (!gasUrl) {
+      setBackendVersion('未設定網址');
+      return;
+    }
+    fetch(gasUrl, { method: 'GET', mode: 'cors' })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          var data = JSON.parse(text);
+          setBackendVersion(data.version || '—');
+        } catch (e) {
+          setBackendVersion('取得失敗');
+        }
+      })
+      .catch(function () {
+        setBackendVersion('連線失敗');
+      });
+  }
+
+  fetchBackendVersion();
 
   function showResult(text, isError) {
     resultEl.textContent = text;
@@ -92,6 +125,7 @@
 
           try {
             var resData = JSON.parse(responseText);
+            if (resData.version) setBackendVersion(resData.version);
             if (status >= 200 && status < 300) {
               setProgress(100, '完成');
               var count = resData.count != null ? resData.count : (resData.pages && resData.pages.length);

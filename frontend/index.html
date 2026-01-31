@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OBE-Project｜PDF 上傳與解析</title>
+  <meta name="version" content="1.0.1" />
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; max-width: 560px; margin: 2rem auto; padding: 0 1rem; }
@@ -18,9 +19,15 @@
     #result { margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 4px; white-space: pre-wrap; font-size: 0.9rem; max-height: 40vh; overflow: auto; }
     .error { color: #c5221f; }
     .file-name { font-size: 0.9rem; color: #333; margin-top: 0.25rem; }
+    .version-bar { font-size: 0.8rem; color: #666; margin-bottom: 1rem; padding: 0.35rem 0; border-bottom: 1px solid #eee; }
+    .version-bar span { margin-right: 1rem; }
   </style>
 </head>
 <body>
+  <div class="version-bar" id="versionBar">
+    <span>前端版本：<strong id="frontendVersion">—</strong></span>
+    <span>後端版本：<strong id="backendVersion">載入中…</strong></span>
+  </div>
   <h1>PDF 上傳與解析</h1>
   <p>選擇 PDF 後上傳至 GAS，由 GAS 轉存 GCS 並呼叫 GCF 解析，結果顯示於下方。</p>
 

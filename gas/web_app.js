@@ -3,19 +3,23 @@
  * doGet：供外部以 GET 驗證連結與參數。
  * doPost：接收前端 PDF（Base64），上傳至 GCS，呼叫 GCF parse_pdf，回傳解析結果。
  *
+ * 版本：每次有更動並部署後請遞增 BACKEND_VERSION，以便前端確認後端是否為最新版。
+ *
  * 需在「專案設定」→「指令碼內容」設定：
  *   GCP_SA_CLIENT_EMAIL  - 服務帳號 email（例：xxx@obe-project-485614.iam.gserviceaccount.com）
  *   GCP_SA_PRIVATE_KEY   - 服務帳號 private_key（PEM，含 -----BEGIN/END-----，換行以 \n 或實際換行）
  *   GCS_BUCKET           - 選填，預設 obe-files
  *   GCF_PARSE_PDF_URL    - 選填，預設 asia-east1 的 parse_pdf URL
  */
+var BACKEND_VERSION = '1.0.1';
 
 function doGet(e) {
   var params = e && e.parameter ? e.parameter : {};
   var payload = {
     message: 'Success',
     timestamp: new Date().toISOString(),
-    params: params
+    params: params,
+    version: BACKEND_VERSION
   };
   var output = ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
@@ -29,7 +33,7 @@ function doGet(e) {
  * 外層 try-catch 確保發生錯誤時也回傳 JSON 格式的錯誤訊息。
  */
 function doPost(e) {
-  var result = { success: false, statusCode: 500, error: null, count: null, pages: null };
+  var result = { success: false, statusCode: 500, error: null, count: null, pages: null, version: BACKEND_VERSION };
   try {
     if (!e || !e.postData || !e.postData.contents) {
       result.error = 'Missing POST body';
