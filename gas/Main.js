@@ -1,22 +1,30 @@
 /**
  * Google Slides 附加元件／容器腳本入口。
- * - onOpen()：新增選單按鈕，點擊後開啟 AI 解析側邊欄。
- * - showSidebar()：以 HtmlService 載入 sidebar.html。
- * - uploadToGcs(fileDataBase64, fileName)：將 PDF 上傳至 GCS，回傳 { bucket, objectName }。
- * - callGcfParse(bucket, objectName)：呼叫 GCF parse_pdf，回傳 { success, pages, error, count }。
+ * - onOpen(e)：使用 createAddonMenu() 在「擴充功能」選單下顯示項目。
+ * - onInstall(e)：安裝後呼叫 onOpen(e)，確保安裝完成即顯示選單。
+ * - showSidebar()：以 HtmlService 載入 sidebar.html（檔名須與左側檔案面板一致：sidebar.html → 'sidebar'）。
+ * - uploadToGcs / callGcfParse / insertElementsToSlide：見下方。
  *
  * 依賴 web_app.js 的 _getProp、_uploadToGcs、_callGcfParsePdf（同一專案內可呼叫）。
  */
 
-function onOpen() {
+function onOpen(e) {
   SlidesApp.getUi()
-    .createMenu('OBE')
+    .createAddonMenu()
     .addItem('開啟 AI 解析側邊欄', 'showSidebar')
     .addToUi();
 }
 
 /**
- * 開啟 AI 解析側邊欄，載入 gas/sidebar.html。
+ * 安裝後觸發，呼叫 onOpen 以立即顯示選單。
+ */
+function onInstall(e) {
+  onOpen(e);
+}
+
+/**
+ * 開啟 AI 解析側邊欄。引用的檔名須與左側檔案面板中的 HTML 檔名一致（不含副檔名）：
+ * 檔案為 sidebar.html → createHtmlOutputFromFile('sidebar')。
  */
 function showSidebar() {
   var html = HtmlService.createHtmlOutputFromFile('sidebar')

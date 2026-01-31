@@ -6,10 +6,22 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/presentations",
     "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/script.external_request"
+    "https://www.googleapis.com/auth/drive.file"
   ],
+  "urlFetchWhitelist": [
+    "https://oauth2.googleapis.com/",
+    "https://storage.googleapis.com/",
+    "https://asia-east1-obe-project-485614.cloudfunctions.net/"
+  ],
+  "addOns": {
+    "common": {
+      "name": "OBE",
+      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/slides_2020_48dp.png"
+    },
+    "slides": {}
+  },
   "webapp": {
     "access": "ANYONE",
     "executeAs": "USER_DEPLOYING"
