@@ -1,6 +1,7 @@
 """Gemini Client：使用 Gemini File API 處理大檔案上傳與解析。"""
 
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -39,14 +40,17 @@ class GeminiFileClient:
     def upload_bytes(self, data: bytes, display_name: str, mime_type: str = "application/pdf") -> str:
         """
         上傳 bytes 至 File API（適合從 GCS 讀取後的小塊或中繼資料）。
-        大檔案建議從 GCS 或本機路徑用 upload_file。
+        genai.upload_file 僅接受 path=，故先寫入暫存檔再上傳。
         """
-        uploaded = genai.upload_file(
-            data=data,
-            mime_type=mime_type,
-            display_name=display_name,
-        )
-        return self._wait_for_file_ready(uploaded.name)
+        suffix = Path(display_name).suffix or ".pdf"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+            f.write(data)
+            path = f.name
+        try:
+            uploaded = genai.upload_file(path=path, mime_type=mime_type)
+            return self._wait_for_file_ready(uploaded.name)
+        finally:
+            Path(path).unlink(missing_ok=True)
 
     def _wait_for_file_ready(self, file_name: str, poll_interval: float = 2.0, timeout: float = 600.0) -> str:
         """輪詢直到檔案狀態為 ACTIVE，回傳可用於 generate_content 的 file URI。"""
