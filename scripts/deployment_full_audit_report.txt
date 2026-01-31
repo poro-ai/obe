@@ -1,0 +1,110 @@
+================================================================================
+  OBE-Project 自動化部署全路徑總體檢報告
+  執行時間：請以實際執行時間為準
+================================================================================
+
+--------------------------------------------------------------------------------
+1. Google Cloud (GCF) 連線檢查
+--------------------------------------------------------------------------------
+
+[1.1] API 狀態（gcloud services list --enabled）
+  狀態：❌ 阻塞
+  說明：在此環境執行 gcloud 時，因無法寫入本機 gcloud 設定目錄（權限不足），
+        無法取得已啟用 API 清單。請在本機以「管理員權限」或已正確設定 gcloud
+        的終端機執行下列指令，並手動確認下列 API 均為 enabled：
+        cloudresourcemanager.googleapis.com
+        cloudfunctions.googleapis.com
+        cloudbuild.googleapis.com
+        artifactregistry.googleapis.com
+        secretmanager.googleapis.com
+        aiplatform.googleapis.com
+
+  立即修復指令（請在本機終端機執行）：
+    gcloud config set project obe-project-485614
+    gcloud services list --enabled --project=obe-project-485614 --filter="config.name:(cloudresourcemanager OR cloudfunctions OR cloudbuild OR artifactregistry OR secretmanager OR aiplatform)"
+
+  若發現有 API 未啟用，可執行：
+    gcloud services enable <API_NAME> --project=obe-project-485614
+
+[1.2] 本機權限（gcloud config list）
+  狀態：❌ 阻塞
+  說明：目前 gcloud 帳號為 roger.yct@gmail.com，但「專案 ID 未設定」。
+        專案應為 obe-project-485614。
+
+  立即修復指令：
+    gcloud config set project obe-project-485614
+
+[1.3] 部署腳本驗證（setup_gcp.sh）
+  狀態：✅ 通暢
+  說明：setup_gcp.sh 已包含 Resource Manager API（cloudresourcemanager.googleapis.com），
+        以及 Cloud Functions、Cloud Build、Eventarc、Cloud Run、Secret Manager。
+        若需 artifactregistry 或 aiplatform，可於腳本中另行加入對應的 gcloud services enable。
+
+--------------------------------------------------------------------------------
+2. Google Apps Script (GAS/clasp) 檢查
+--------------------------------------------------------------------------------
+
+[2.1] 登入狀態（npx @google/clasp status）
+  狀態：✅ 通暢
+  說明：clasp 已登入，可正常列出追蹤檔案（gas/appsscript.json、health_check.js、Main.js、web_app.js）。
+
+[2.2] ID 綁定（.clasp.json 的 scriptId）
+  狀態：✅ 通暢（推論）
+  說明：.clasp.json 受 .gitignore 排除，無法直接讀取；因 clasp status 可正常執行，
+        表示本機已綁定有效 scriptId。若有疑慮請手動開啟 .clasp.json 核對 scriptId
+        是否對應到正確的雲端專案。
+
+[2.3] 權限宣告（gas/appsscript.json oauthScopes）
+  狀態：✅ 通暢
+  說明：已宣告 spreadsheets、drive.file、script.external_request，
+        足以存取目前專案的 Sheets 與對外 HTTP 請求。
+
+--------------------------------------------------------------------------------
+3. GitHub CI/CD 檢查
+--------------------------------------------------------------------------------
+
+[3.1] 遠端設定（git remote -v）
+  狀態：✅ 通暢
+  說明：origin 為 https://github.com/poro-ai/obe.git (fetch/push)，設定正確。
+
+[3.2] Secrets 映射（.github/workflows/deploy.yml）
+  狀態：✅ 通暢
+  說明：workflow 使用 secrets.GCP_PROJECT_ID 與 secrets.GCP_SA_KEY，
+        與 GitHub 儲存庫 Secrets 名稱 GCP_PROJECT_ID、GCP_SA_KEY 完全一致。
+
+[3.3] 暫存區檢查（git status）
+  狀態：❌ 阻塞
+  說明：目前存在未提交的配置/程式變更，CI/CD 部署的是上次提交的版本；
+        若希望最新變更一併納入部署，需先提交並推送。
+
+  未提交變更摘要：
+    - 已修改：.github/workflows/deploy.yml, gas/Main.js
+    - 未追蹤：.gcloudignore, scripts/connection_checklist.py, tests/test_cloud_connection.py
+
+  立即修復指令（二擇一）：
+    A) 提交並推送以觸發部署：
+       git add .github/workflows/deploy.yml gas/Main.js .gcloudignore scripts/connection_checklist.py tests/test_cloud_connection.py
+       git commit -m "chore: sync workflow, GAS, and test/script files"
+       git push origin main
+
+    B) 捨棄工作目錄變更（僅還原已追蹤檔案）：
+       git restore .github/workflows/deploy.yml gas/Main.js
+
+--------------------------------------------------------------------------------
+4. 總結報告
+--------------------------------------------------------------------------------
+
+  路徑標註：
+  - Google Cloud (GCF) 連線    ：❌ 阻塞（本機專案未設定 + API 清單需本機驗證）
+  - Google Apps Script (GAS)   ：✅ 通暢
+  - GitHub CI/CD               ：❌ 阻塞（有未提交變更）
+
+  建議執行順序：
+  1. 在本機執行：gcloud config set project obe-project-485614
+  2. 在本機執行：gcloud services list --enabled --project=obe-project-485614
+     確認上述六項 API 均已啟用，缺一則執行 gcloud services enable <API> --project=obe-project-485614
+  3. 依需求選擇 3.3 的 A 或 B 處理未提交變更，若選 A 則推送後至 GitHub Actions 觀察 parse_pdf 部署。
+
+================================================================================
+  報告結束
+================================================================================
