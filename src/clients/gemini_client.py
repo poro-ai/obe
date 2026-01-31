@@ -23,7 +23,7 @@ class GeminiFileClient:
         key = api_key or loader.get_secret("GEMINI_API_KEY")
         if key:
             genai.configure(api_key=key)
-        self._model = genai.GenerativeModel("gemini-1.5-flash")
+        self._model = genai.GenerativeModel("gemini-2.5-flash")
 
     def upload_file(self, file_path: str | Path, mime_type: str = "application/pdf") -> str:
         """

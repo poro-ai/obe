@@ -1,4 +1,10 @@
-"""GeminiFileClient 單元測試（Mock）。"""
+"""
+GeminiFileClient 單元測試（Mock）。
+
+不需部署到 GCF 即可在本機驗證 PDF 解析流程：
+  pytest tests/unit/test_gemini_client.py -v
+通過後再 deploy，可減少「部署後才發現 API 用法錯誤」的次數。
+"""
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -70,3 +76,67 @@ def test_parse_response_to_page_extracts_returns_list(gemini_client: GeminiFileC
     assert isinstance(result[0], PageExtract)
     assert result[0].group_id == "g1"
     assert result[0].page_number == 1
+
+
+# ----- parse_pdf_with_file_uri：驗證「file_uri → get_file → generate_content」流程，不需 deploy -----
+
+
+def test_parse_pdf_with_file_uri_extracts_file_name_and_calls_get_file_and_generate_content(
+    gemini_client: GeminiFileClient,
+) -> None:
+    """parse_pdf_with_file_uri 應從 file_uri 取出 file_name，呼叫 genai.get_file，再以 [prompt, file_obj] 呼叫 generate_content。"""
+    file_uri = "https://generativelanguage.googleapis.com/v1beta/files/xyz789"
+    mock_file_obj = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = '[{"group_id": "p1", "visual_summary": "s", "associated_text": "t", "page_number": 1}]'
+
+    with patch("src.clients.gemini_client.genai.get_file", return_value=mock_file_obj) as mock_get_file:
+        with patch.object(gemini_client._model, "generate_content", return_value=mock_response) as mock_gen:
+            result = gemini_client.parse_pdf_with_file_uri(file_uri)
+
+    mock_get_file.assert_called_once_with("files/xyz789")
+    mock_gen.assert_called_once()
+    call_args = mock_gen.call_args[0][0]
+    assert isinstance(call_args, list)
+    assert len(call_args) == 2
+    assert "PDF" in call_args[0]
+    assert call_args[1] is mock_file_obj
+    assert len(result) == 1
+    assert result[0].group_id == "p1"
+    assert result[0].page_number == 1
+
+
+def test_parse_pdf_with_file_uri_raises_on_invalid_uri(gemini_client: GeminiFileClient) -> None:
+    """無效的 file_uri（取不出 file_name）應拋出 ValueError。"""
+    with pytest.raises(ValueError, match="Invalid file_uri"):
+        gemini_client.parse_pdf_with_file_uri("https://generativelanguage.googleapis.com/v1beta/")
+
+
+def test_parse_pdf_with_file_uri_handles_pages_dict(gemini_client: GeminiFileClient) -> None:
+    """generate_content 回傳的 JSON 若為 { pages: [...] }，應正確解析。"""
+    file_uri = "https://generativelanguage.googleapis.com/v1beta/files/abc"
+    mock_response = MagicMock()
+    mock_response.text = '{"pages": [{"group_id": "g2", "visual_summary": "v", "associated_text": "a", "page_number": 2}]}'
+
+    with patch("src.clients.gemini_client.genai.get_file", return_value=MagicMock()):
+        with patch.object(gemini_client._model, "generate_content", return_value=mock_response):
+            result = gemini_client.parse_pdf_with_file_uri(file_uri)
+
+    assert len(result) == 1
+    assert result[0].group_id == "g2"
+    assert result[0].page_number == 2
+
+
+def test_upload_bytes_writes_temp_file_and_calls_upload_file(
+    gemini_client: GeminiFileClient,
+    mock_upload_file: MagicMock,
+    mock_get_file_active: MagicMock,
+) -> None:
+    """upload_bytes 應寫入暫存檔後呼叫 upload_file(path=...)，回傳 file URI。"""
+    data = b"%PDF-1.4 minimal"
+    uri = gemini_client.upload_bytes(data, display_name="test.pdf", mime_type="application/pdf")
+
+    assert mock_upload_file.called
+    call_kw = mock_upload_file.call_args[1]
+    assert call_kw.get("mime_type") == "application/pdf"
+    assert "generativelanguage.googleapis.com" in uri or "files/" in uri
