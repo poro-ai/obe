@@ -15,6 +15,10 @@ echo "專案 ID: $PROJECT_ID"
 gcloud config set project "$PROJECT_ID"
 
 echo ""
+echo "正在開啟 Cloud Resource Manager API (cloudresourcemanager.googleapis.com)..."
+gcloud services enable cloudresourcemanager.googleapis.com --project="$PROJECT_ID"
+
+echo ""
 echo "正在開啟 Cloud Functions API (cloudfunctions.googleapis.com)..."
 gcloud services enable cloudfunctions.googleapis.com --project="$PROJECT_ID"
 
@@ -31,7 +35,12 @@ echo "正在開啟 Cloud Run API (run.googleapis.com，Gen2 函式需要)..."
 gcloud services enable run.googleapis.com --project="$PROJECT_ID"
 
 echo ""
-echo "完成。若要檢查已部署的函式："
+echo "正在開啟 Secret Manager API (secretmanager.googleapis.com)..."
+gcloud services enable secretmanager.googleapis.com --project="$PROJECT_ID"
+
+echo ""
+echo "完成。Cloud Functions、Cloud Build、Eventarc、Cloud Run、Secret Manager 已開啟。"
+echo "若要檢查已部署的函式："
 echo "  gcloud functions list --project=$PROJECT_ID --gen2"
 echo "若要查看單一函式："
 echo "  gcloud functions describe parse_pdf --region=us-central1 --gen2 --project=$PROJECT_ID"
