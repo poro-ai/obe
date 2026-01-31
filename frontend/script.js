@@ -1,6 +1,6 @@
 /**
  * 前端與 GAS doPost 通訊：以 Base64 上傳 PDF，顯示進度條，並顯示 GAS 回傳的 GCF 解析結果。
- * 使用 Content-Type: text/plain;charset=utf-8 以避開 CORS 預檢（OPTIONS），body 仍為 JSON 字串。
+ * 使用 fetch，Content-Type: text/plain;charset=utf-8 以避開 CORS 預檢（OPTIONS），mode: 'cors'，body 為 JSON.stringify。
  */
 
 (function () {
@@ -66,62 +66,57 @@
       }
       setProgress(10, '上傳至 GAS…');
 
-      var xhr = new XMLHttpRequest();
       var data = { pdfBase64: base64, fileName: file.name };
       var body = JSON.stringify(data);
 
-      xhr.upload.addEventListener('progress', function (e) {
-        if (e.lengthComputable) {
-          var pct = 10 + Math.round((e.loaded / e.total) * 50);
-          setProgress(pct, '上傳中 ' + pct + '%');
-        }
-      });
+      fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: body
+      })
+        .then(function (res) {
+          setProgress(95, 'GAS 處理中…');
+          var status = res.status;
+          return res.text().then(function (responseText) {
+            return { status: status, responseText: responseText };
+          });
+        })
+        .then(function (out) {
+          var status = out.status;
+          var responseText = out.responseText || '';
 
-      xhr.addEventListener('load', function () {
-        setProgress(95, 'GAS 處理中…');
-        var status = xhr.status;
-        var responseText = xhr.responseText || '';
+          console.log('[GAS 回傳] status:', status, 'response:', responseText.substring(0, 500) + (responseText.length > 500 ? '…' : ''));
 
-        console.log('[GAS 回傳] status:', status, 'response:', responseText.substring(0, 500) + (responseText.length > 500 ? '…' : ''));
-
-        try {
-          var resData = JSON.parse(responseText);
-          if (status >= 200 && status < 300) {
-            setProgress(100, '完成');
-            var count = resData.count != null ? resData.count : (resData.pages && resData.pages.length);
-            console.log('[GAS 回傳] 解析成功，筆數:', count, 'data:', resData);
-            showResult(
-              '成功。共 ' + (count || 0) + ' 筆頁面。\n\n' +
-              JSON.stringify(resData, null, 2)
-            );
-          } else {
-            console.warn('[GAS 回傳] 錯誤:', status, resData);
-            showResult('錯誤 ' + status + ': ' + (resData.error || resData.message || responseText), true);
+          try {
+            var resData = JSON.parse(responseText);
+            if (status >= 200 && status < 300) {
+              setProgress(100, '完成');
+              var count = resData.count != null ? resData.count : (resData.pages && resData.pages.length);
+              console.log('[GAS 回傳] 解析成功，筆數:', count, 'data:', resData);
+              showResult(
+                '成功。共 ' + (count || 0) + ' 筆頁面。\n\n' +
+                JSON.stringify(resData, null, 2)
+              );
+            } else {
+              console.warn('[GAS 回傳] 錯誤:', status, resData);
+              showResult('錯誤 ' + status + ': ' + (resData.error || resData.message || responseText), true);
+            }
+          } catch (err) {
+            console.error('[GAS 回傳] 解析失敗:', err, 'raw:', responseText.substring(0, 300));
+            showResult('回應解析失敗: ' + responseText.substring(0, 200), true);
           }
-        } catch (err) {
-          console.error('[GAS 回傳] 解析失敗:', err, 'raw:', responseText.substring(0, 300));
-          showResult('回應解析失敗: ' + responseText.substring(0, 200), true);
-        }
-        uploadBtn.disabled = false;
-        hideProgress();
-      });
-
-      xhr.addEventListener('error', function (e) {
-        console.error('[GAS 請求] 網路或 CORS 錯誤:', e);
-        showResult('上傳請求失敗（網路或 CORS）', true);
-        uploadBtn.disabled = false;
-        hideProgress();
-      });
-
-      xhr.addEventListener('abort', function () {
-        console.warn('[GAS 請求] 已中止');
-        uploadBtn.disabled = false;
-        hideProgress();
-      });
-
-      xhr.open('POST', gasUrl);
-      xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-      xhr.send(body);
+          uploadBtn.disabled = false;
+          hideProgress();
+        })
+        .catch(function (err) {
+          console.error('[GAS 請求] 網路或 CORS 錯誤:', err);
+          showResult('上傳請求失敗（網路或 CORS）', true);
+          uploadBtn.disabled = false;
+          hideProgress();
+        });
     };
 
     reader.onerror = function () {

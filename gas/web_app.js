@@ -23,10 +23,10 @@ function doGet(e) {
 }
 
 /**
- * 接收前端 POST（Content-Type: text/plain），從 e.postData.contents 讀取 JSON 字串並解析。
- * 預期 body：{ pdfBase64: string, fileName: string }
- * 流程：解碼 PDF → 上傳 GCS → 呼叫 GCF parse_pdf → 以 ContentService.createTextOutput 回傳 JSON，MimeType.JSON。
- * 回傳內容含 success、statusCode，方便前端判斷。
+ * 接收前端 POST（Content-Type: text/plain）。
+ * 從 e.postData.contents 讀取原始字串，使用 JSON.parse 解析。
+ * 處理邏輯後以 ContentService.createTextOutput 回傳 JSON 字串，並 setMimeType(ContentService.MimeType.JSON)。
+ * 外層 try-catch 確保發生錯誤時也回傳 JSON 格式的錯誤訊息。
  */
 function doPost(e) {
   var result = { success: false, statusCode: 500, error: null, count: null, pages: null };
@@ -36,10 +36,10 @@ function doPost(e) {
       result.statusCode = 400;
       return _jsonOutput(result);
     }
-    var jsonString = e.postData.contents;
+    var rawString = e.postData.contents;
     var body;
     try {
-      body = JSON.parse(jsonString);
+      body = JSON.parse(rawString);
     } catch (parseErr) {
       result.error = 'Invalid JSON in body: ' + parseErr.toString();
       result.statusCode = 400;
@@ -83,7 +83,7 @@ function doPost(e) {
 }
 
 /**
- * 使用 ContentService.createTextOutput 回傳結果，MimeType 設為 JSON，方便前端解析與判斷。
+ * 使用 ContentService.createTextOutput 回傳 JSON 字串，務必 setMimeType(ContentService.MimeType.JSON)。
  */
 function _jsonOutput(obj) {
   var output = ContentService.createTextOutput(JSON.stringify(obj))
