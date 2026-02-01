@@ -1,4 +1,6 @@
 /**
+ * 【非 clasp 來源】此檔為舊版／備份；clasp 推送的是 gas/web_app.js（rootDir: ./gas）。
+ * 請勿編輯此檔作為 GAS 來源，版本與 JSONP 請改 gas/web_app.js。
  * GAS Web App：doGet / doPost 入口。
  * doGet：供外部以 GET 驗證連結與參數。
  * doPost：接收前端 PDF（Base64），上傳至 GCS，呼叫 GCF parse_pdf，回傳解析結果。
