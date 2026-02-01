@@ -59,9 +59,25 @@ function onHomepage(e) {
 }
 
 /**
+ * 取得「瀏覽器編輯器」網址（含目前簡報 ID 與 GAS Web App URL），供側邊欄按鈕開啟新分頁。
+ * 需在指令碼內容設定 EDITOR_BASE_URL（例：https://poro-ai.github.io/obe/）、GAS_WEB_APP_URL（選填，會帶入編輯器）。
+ */
+function getEditorUrlWithPresentationId() {
+  var presentation = SlidesApp.getActivePresentation();
+  var id = presentation.getId();
+  var base = _getProp('EDITOR_BASE_URL') || 'https://poro-ai.github.io/obe/';
+  base = base.replace(/\/$/, '');
+  var gasUrl = _getProp('GAS_WEB_APP_URL') || '';
+  var url = base + '/editor.html?presentationId=' + encodeURIComponent(id);
+  if (gasUrl) url += '&gasUrl=' + encodeURIComponent(gasUrl);
+  return { url: url };
+}
+
+/**
  * 開啟 AI 解析側邊欄。引用的檔名須與左側檔案面板中的 HTML 檔名一致（不含副檔名）：
  * 檔案為 sidebar.html → createHtmlOutputFromFile('sidebar')。
  * 使用 NATIVE sandbox 以允許解析結果中的 data URI 圖片顯示（IFRAME 預設會擋 data:）。
+ * 瀏覽器可能顯示「iframe allow-scripts + allow-same-origin 可逃脫 sandbox」警告，為 NATIVE 模式取捨，可忽略。
  */
 function showSidebar() {
   var html = HtmlService.createHtmlOutputFromFile('sidebar')

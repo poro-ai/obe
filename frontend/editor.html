@@ -182,8 +182,10 @@
     <button type="button" id="btnLoadStorage">從上次解析結果載入</button>
     <button type="button" id="btnLoadPaste">從貼上 JSON 載入</button>
     <button type="button" id="btnExport" class="primary" disabled>匯出／儲存至 Google Sheets</button>
+    <button type="button" id="btnInsertSlides" class="primary" disabled style="display: none;">插入至 Google 簡報</button>
     <a href="index.html">← 返回上傳頁</a>
   </div>
+  <p class="sub" id="slidesLinkHint" style="display: none;">已連結簡報，載入內容後可點「插入至 Google 簡報」將選取內容插入該簡報。</p>
 
   <div class="load-panel" id="loadPanel" style="display: none;">
     <label>貼上解析結果 JSON（含 <code>pages</code> 的物件或 <code>pages</code> 陣列）：</label>
@@ -217,6 +219,23 @@
   var editor = document.getElementById('editor');
 
   var state = { pages: [] };
+  var urlPresentationId = null;
+  var urlGasUrl = null;
+
+  (function readUrlParams() {
+    var params = new URLSearchParams(location.search);
+    urlPresentationId = params.get('presentationId') || null;
+    urlGasUrl = params.get('gasUrl') || null;
+    if (urlGasUrl) {
+      gasUrl.value = urlGasUrl;
+      localStorage.setItem(GAS_URL_KEY, urlGasUrl);
+    }
+    if (urlPresentationId) {
+      document.getElementById('slidesLinkHint').style.display = 'block';
+      var btnInsert = document.getElementById('btnInsertSlides');
+      if (btnInsert) btnInsert.style.display = 'inline-block';
+    }
+  })();
 
   function showMsg(text, isError) {
     msg.textContent = text || '';
@@ -304,6 +323,8 @@
 
   function render() {
     btnExport.disabled = state.pages.length === 0;
+    var btnInsert = document.getElementById('btnInsertSlides');
+    if (btnInsert) btnInsert.disabled = !urlPresentationId || state.pages.length === 0;
     if (state.pages.length === 0) {
       editor.innerHTML = '<div class="empty-state"><p>尚無內容。</p><p>請從「上次解析結果」載入，或貼上 JSON 後載入。</p></div>';
       return;
@@ -454,8 +475,11 @@
   btnLoadPaste.addEventListener('click', loadFromPaste);
   btnPasteGo.addEventListener('click', doPasteGo);
   btnExport.addEventListener('click', exportToSheets);
+  var btnInsertSlides = document.getElementById('btnInsertSlides');
+  if (btnInsertSlides) btnInsertSlides.addEventListener('click', insertToSlides);
 
   if (sessionStorage.getItem(EDITOR_STORAGE_KEY)) loadFromStorage();
+  else if (urlPresentationId) { gasUrlWrap.style.display = 'block'; }
 })();
   </script>
 </body>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI 解析</title>
+  <!-- GAS 無建置步驟，使用 CDN；瀏覽器「cdn.tailwindcss.com should not be used in production」可忽略 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* 動態進度條：寬度過渡 */
@@ -34,6 +35,11 @@
     <input type="file" id="file-input" accept=".pdf,application/pdf" class="hidden" />
     <button type="button" id="btn-upload" class="btn-upload w-full py-2.5 px-3 rounded-lg font-medium text-gray-700 border transition-all duration-150">
       📄 上傳 PDF
+    </button>
+
+    <!-- 替代方案：在瀏覽器開啟編輯器（大畫面、圖片可顯示、可拖拉排序、再插入簡報） -->
+    <button type="button" id="btn-open-editor" class="w-full py-2 px-3 rounded-lg font-medium text-sm border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100">
+      🌐 在瀏覽器開啟編輯器（大畫面・可顯示圖片）
     </button>
 
     <!-- 進度區：動態進度條，狀態為「正在讀取檔案...」「正在上傳雲端...」「AI 深度解析中...」等 -->
@@ -209,6 +215,24 @@
       });
 
       btnUpload.addEventListener('click', function () { fileInput.click(); });
+
+      document.getElementById('btn-open-editor').addEventListener('click', function () {
+        google.script.run
+          .withSuccessHandler(function (o) {
+            if (o && o.url) {
+              if (typeof google !== 'undefined' && google.script && google.script.host && google.script.host.openLink)
+                google.script.host.openLink(o.url);
+              else
+                window.open(o.url, '_blank');
+            } else {
+              progressText.textContent = '請在指令碼內容設定 EDITOR_BASE_URL';
+            }
+          })
+          .withFailureHandler(function (e) {
+            progressText.textContent = '錯誤：' + (e.message || String(e));
+          })
+          .getEditorUrlWithPresentationId();
+      });
 
       fileInput.addEventListener('change', function () {
         var file = fileInput.files[0];

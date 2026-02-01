@@ -52,6 +52,9 @@ function doPost(e) {
     if (body.action === 'saveToSheets') {
       return _jsonOutput(_saveToSheets(body));
     }
+    if (body.action === 'insertToSlides') {
+      return _jsonOutput(_insertToSlides(body));
+    }
 
     var pdfBase64 = body.pdfBase64;
     var fileName = (body.fileName || 'upload.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -138,6 +141,109 @@ function _saveToSheets(body) {
     out.success = true;
     out.statusCode = 200;
     out.sheetUrl = spreadsheet.getUrl();
+    return out;
+  } catch (err) {
+    out.error = err.toString();
+    out.statusCode = 500;
+    return out;
+  }
+}
+
+/**
+ * 將 elements 插入指定投影片（與 Main.js insertElementsToSlide 相同排版邏輯）。
+ * 供 insertToSlides（瀏覽器編輯器）與附加元件共用。
+ */
+function _insertElementsIntoSlide(slide, elements) {
+  if (!elements || elements.length === 0) return;
+  var pageWidth = 720;
+  var marginLeft = 20;
+  var imageWidth = Math.round(pageWidth * 0.3);
+  var imageHeight = 162;
+  var textLeft = marginLeft + imageWidth + 10;
+  var textWidth = pageWidth - textLeft - marginLeft;
+  var textHeight = 80;
+  var rowOffset = 50;
+  var offsetY = 20;
+
+  for (var i = 0; i < elements.length; i++) {
+    var el = elements[i];
+    var type = (el.type || 'text').toLowerCase();
+    var content = (el.content || '').toString();
+    var desc = (el.description || el.summary || '').toString();
+
+    if (type === 'image') {
+      try {
+        var imageSource = null;
+        if (content.indexOf('data:') === 0) {
+          var comma = content.indexOf(',');
+          if (comma >= 0) {
+            var b64 = content.substring(comma + 1);
+            var mime = 'image/png';
+            if (content.indexOf('image/jpeg') >= 0 || content.indexOf('image/jpg') >= 0) mime = 'image/jpeg';
+            imageSource = Utilities.newBlob(Utilities.base64Decode(b64), mime, 'img');
+          }
+        } else if (content.indexOf('http') === 0) {
+          imageSource = content;
+        }
+        if (imageSource) {
+          slide.insertImage(imageSource, marginLeft, offsetY, imageWidth, imageHeight);
+        }
+      } catch (imgErr) {}
+      var textToShow = desc || '(圖片)';
+      var tb = slide.insertTextBox(textToShow, textLeft, offsetY, textWidth, textHeight);
+      try {
+        var tr = tb.getText();
+        if (tr && tr.getTextStyle) {
+          tr.getTextStyle().setFontFamily('Microsoft JhengHei');
+          tr.getTextStyle().setFontSize(14);
+        }
+      } catch (e) {}
+      offsetY += rowOffset;
+    } else {
+      var txt = content || desc || '';
+      if (txt.length > 500) txt = txt.substring(0, 500) + '…';
+      var box = slide.insertTextBox(txt, marginLeft, offsetY, pageWidth - marginLeft * 2, textHeight);
+      try {
+        var textRange = box.getText();
+        if (textRange && textRange.getTextStyle) {
+          textRange.getTextStyle().setFontFamily('Microsoft JhengHei');
+          textRange.getTextStyle().setFontSize(14);
+        }
+      } catch (e) {}
+      offsetY += rowOffset;
+    }
+  }
+}
+
+/**
+ * 瀏覽器編輯器「插入至 Google 簡報」：依 presentationId 開啟簡報並將 elements 插入指定投影片。
+ * body: { action: 'insertToSlides', presentationId: string, elements: Array, slideIndex?: number }
+ * 部署 Web App 時請設為「以造訪使用者的身分執行」，否則無法寫入使用者的簡報。
+ */
+function _insertToSlides(body) {
+  var out = { success: false, statusCode: 500, error: null, slideIndex: null, version: BACKEND_VERSION };
+  try {
+    var presentationId = body.presentationId;
+    var elements = body.elements;
+    if (!presentationId || !elements || !Array.isArray(elements)) {
+      out.error = 'Missing presentationId or elements array';
+      out.statusCode = 400;
+      return out;
+    }
+    var presentation = SlidesApp.openById(presentationId);
+    var slides = presentation.getSlides();
+    if (slides.length === 0) {
+      out.error = 'Presentation has no slides';
+      out.statusCode = 400;
+      return out;
+    }
+    var slideIndex = Math.min(parseInt(body.slideIndex, 10) || 0, slides.length - 1);
+    if (slideIndex < 0) slideIndex = 0;
+    var slide = slides[slideIndex];
+    _insertElementsIntoSlide(slide, elements);
+    out.success = true;
+    out.statusCode = 200;
+    out.slideIndex = slideIndex;
     return out;
   } catch (err) {
     out.error = err.toString();

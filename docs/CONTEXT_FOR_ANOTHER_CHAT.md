@@ -90,8 +90,10 @@
 
 - **Main.js**：`onOpen(e)` 用 createAddonMenu（或 fallback createMenu('OBE')）、`onInstall(e)` 呼叫 onOpen、**onSlidesHomepage(e)** / **onHomepage(e)** 回傳 Card（manifest 的 homepageTrigger 必要）。
 - **showSidebar()**：`HtmlService.createHtmlOutputFromFile('sidebar')` 載入 `sidebar.html`（檔名須一致）。
+- **getEditorUrlWithPresentationId()**：回傳 `{ url }`，為「瀏覽器編輯器」網址（含目前簡報 ID、GAS Web App URL）。側邊欄按鈕「在瀏覽器開啟編輯器」可開啟此 URL，大畫面、圖片可顯示、可拖拉，再從編輯器「插入至 Google 簡報」。
 - **uploadToGcs(base64, fileName)**、**callGcfParse(bucket, objectName)**：與 web_app 邏輯一致，供側邊欄呼叫。
 - **insertElementsToSlide(elements)**：將選取的 elements（type, content, description）插入目前投影片 — 圖片 30% 寬置左、文字方塊微軟正黑體 14pt 置右，每項下移 50pt。
+- **替代方案**：側邊欄受 GAS 限制（空間小、圖片常不顯示）。可點「在瀏覽器開啟編輯器」→ 開新分頁到 `editor.html?presentationId=xxx&gasUrl=yyy`，在編輯器載入解析結果、拖拉排序後，點「插入至 Google 簡報」；GAS Web App doPost `action=insertToSlides` 會寫入該簡報。見 `docs/SLIDES_EDITOR_ALTERNATIVE.md`。
 
 ---
 
