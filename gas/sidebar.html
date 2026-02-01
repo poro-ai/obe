@@ -141,7 +141,7 @@
           var withIndex = [];
           elements.forEach(function (el, ei) {
             if (currentFilter === 'all') withIndex.push({ el: el, ei: ei });
-            else if (currentFilter === 'image' && el.type === 'image') withIndex.push({ el: el, ei: ei });
+            else if (currentFilter === 'image' && (el.type || '').toString().toLowerCase() === 'image') withIndex.push({ el: el, ei: ei });
             else if (currentFilter === 'text' && el.type !== 'image') withIndex.push({ el: el, ei: ei });
           });
           if (withIndex.length === 0) continue;
@@ -156,7 +156,7 @@
           for (var i = 0; i < withIndex.length; i++) {
             var item = withIndex[i];
             var el = item.el;
-            var isImg = el.type === 'image';
+            var isImg = (el.type || '').toString().toLowerCase() === 'image';
             html += '<label class="flex gap-2 p-1.5 rounded border border-gray-100 hover:bg-gray-50 card-preview cursor-pointer">';
             html += '<input type="checkbox" class="element-check mt-0.5" data-page-index="' + pi + '" data-el-index="' + item.ei + '" />';
             if (isImg) {

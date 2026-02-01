@@ -40,6 +40,7 @@
 - **新增功能時，須一併新增對應的單元測試**：實作新功能（新模組、新 API、新業務邏輯）的同時，在 `tests/unit/`（或 `tests/integration/`）新增或擴充測試檔，覆蓋正常流程與關鍵錯誤路徑；不可只寫功能不寫測試。
 - **每次修改完系統，都要做 unittest 與 integration test**，再進行 commit / push。
 - **Code 有更動時，Agent 須自動執行 test**：完成程式變更後先跑 test，通過後再進行 commit / push；若使用者要求「commit and push」或「commit and push all」，須先跑 test，通過才提交，失敗則不提交並回報；**提交並 push 後一律執行 `npx @google/clasp push`** 將 gas/ 同步到 Apps Script。
+- **GAS 有更新時，commit message 須標註**：若本次 commit 包含 `gas/` 下任何檔案的變更，commit message 必須明確提到 GAS 更新，例如前綴或內文含 **`GAS:`**、**`gas 更新`**、**`chore(gas):`** 等，以便從 git log 一眼看出哪幾次提交有改 GAS。
 - **使用者說「go」**：等同「test then commit and push all」— 先跑 Quick test，通過後再 commit、push 全部變更，**最後執行 `npx @google/clasp push`**。失敗則不提交並回報。
 - **只跑必要測試，避開無謂重複**：
   - **Quick（日常／go 預設）**：`python -m pytest tests/unit/ -v --tb=short` — 僅單元測試（約 20–40s），不打 GCF/GAS，不需網路。適合：僅改 gas/ 或 frontend/、僅改 Python、或 go 時快速確認。
