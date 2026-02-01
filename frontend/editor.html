@@ -229,6 +229,13 @@
     var params = new URLSearchParams(location.search);
     urlPresentationId = params.get('presentationId') || null;
     urlGasUrl = params.get('gasUrl') || null;
+    /* 備援：若 gasUrl 過長導致 get() 回傳 null，從 query 手動擷取 */
+    if (!urlGasUrl && location.search.indexOf('gasUrl=') >= 0) {
+      var q = location.search.slice(1);
+      var start = q.indexOf('gasUrl=') + 7;
+      var end = q.indexOf('&', start);
+      urlGasUrl = decodeURIComponent(q.slice(start, end >= 0 ? end : q.length));
+    }
     urlToken = params.get('token') || null;
     if (urlGasUrl) {
       gasUrl.value = urlGasUrl;
