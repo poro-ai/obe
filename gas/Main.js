@@ -1,11 +1,15 @@
 /**
  * Google Slides 附加元件／容器腳本入口。
- * - onOpen(e)：使用 createAddonMenu() 在「擴充功能」選單下顯示項目。
- * - onInstall(e)：安裝後呼叫 onOpen(e)，確保安裝完成即顯示選單。
- * - showSidebar()：以 HtmlService 載入 sidebar.html（檔名須與左側檔案面板一致：sidebar.html → 'sidebar'）。
- * - uploadToGcs / callGcfParse / insertElementsToSlide：見下方。
  *
- * 依賴 web_app.js 的 _getProp、_uploadToGcs、_callGcfParsePdf（同一專案內可呼叫）。
+ * 側邊欄入口：
+ * - onOpen(e)：新增選單按鈕（擴充功能 → OBE → 開啟 AI 解析側邊欄），使用 createAddonMenu()，fallback 為 createMenu('OBE')。
+ * - showSidebar()：呼叫 HtmlService.createHtmlOutputFromFile('sidebar') 載入 gas/sidebar.html，檔名須一致（sidebar.html → 'sidebar'）。
+ *
+ * GAS 中轉（檔案流 → GCS → GCF）：
+ * - uploadAndProcess(fileDataBase64, fileName)：單一入口，將 PDF Base64 上傳至 GCS 後觸發 GCF parse_pdf，回傳 { success, pages, error, count }。
+ * - 側邊欄為顯示三階段進度（讀取檔案 / 上傳雲端 / AI 解析），可改為分步呼叫 uploadToGcs 與 callGcfParse。
+ *
+ * 其他：uploadToGcs、callGcfParse、insertElementsToSlide；依賴 web_app.js 的 _getProp、_uploadToGcs、_callGcfParsePdf。
  */
 
 function onOpen(e) {

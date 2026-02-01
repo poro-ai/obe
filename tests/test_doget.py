@@ -4,11 +4,13 @@
 使用方式：
   1. 在 GAS 編輯器部署為「網路應用程式」，取得部署 URL。
   2. 設定環境變數 GAS_WEBAPP_URL 或於下方 WEBAPP_URL 填入 URL。
-  3. 執行：python tests/test_doget.py
+  3. 執行：python tests/test_doget.py  或  pytest tests/test_doget.py
 """
 import json
 import os
 import sys
+
+import pytest
 
 try:
     import requests
@@ -21,12 +23,10 @@ WEBAPP_URL = os.environ.get("GAS_WEBAPP_URL", "")
 
 
 def test_doget(url: str | None = None, params: dict | None = None) -> None:
-    """向 GAS doGet 發送 GET，印出 JSON 結果。"""
+    """向 GAS doGet 發送 GET，印出 JSON 結果。未設定 GAS_WEBAPP_URL 時跳過（供本地 unittest 全過）。"""
     base = url or WEBAPP_URL
     if not base:
-        print("請設定 GAS_WEBAPP_URL 或傳入 url 參數。")
-        print("例：GAS_WEBAPP_URL=https://script.google.com/macros/s/xxx/exec python tests/test_doget.py")
-        sys.exit(1)
+        pytest.skip("請設定 GAS_WEBAPP_URL 或傳入 url 參數。例：GAS_WEBAPP_URL=https://script.google.com/macros/s/xxx/exec")
     # 確保是 /exec 端點
     if not base.rstrip("/").endswith("/exec"):
         base = base.rstrip("/") + "/exec"
@@ -41,4 +41,8 @@ def test_doget(url: str | None = None, params: dict | None = None) -> None:
 
 
 if __name__ == "__main__":
+    if not WEBAPP_URL:
+        print("請設定 GAS_WEBAPP_URL 或傳入 url 參數。")
+        print("例：GAS_WEBAPP_URL=https://script.google.com/macros/s/xxx/exec python tests/test_doget.py")
+        sys.exit(1)
     test_doget(params={"status": "ok", "name": "cursor_test"})
