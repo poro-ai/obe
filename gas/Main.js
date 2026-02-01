@@ -74,6 +74,22 @@ function getEditorUrlWithPresentationId() {
 }
 
 /**
+ * 將側邊欄的解析結果暫存至 CacheService，並回傳帶 token 的編輯器網址，供「在瀏覽器開啟編輯器」時帶入資料。
+ * 若有 pagesData 則儲存並在 URL 加上 token；編輯器載入時會依 token 取回並顯示。
+ */
+function storeParseResultAndGetEditorUrl(pagesData) {
+  var obj = getEditorUrlWithPresentationId();
+  var url = obj.url;
+  if (pagesData && Array.isArray(pagesData) && pagesData.length > 0) {
+    try {
+      var token = _storeParseResultChunked(pagesData);
+      if (token) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    } catch (err) {}
+  }
+  return { url: url };
+}
+
+/**
  * 開啟 AI 解析側邊欄。引用的檔名須與左側檔案面板中的 HTML 檔名一致（不含副檔名）：
  * 檔案為 sidebar.html → createHtmlOutputFromFile('sidebar')。
  * 使用 NATIVE sandbox 以允許解析結果中的 data URI 圖片顯示（IFRAME 預設會擋 data:）。

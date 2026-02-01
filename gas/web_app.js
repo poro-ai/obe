@@ -15,6 +15,16 @@ var BACKEND_VERSION = '1.0.4';
 
 function doGet(e) {
   var params = e && e.parameter ? e.parameter : {};
+  if (params.action === 'getParseResult' && params.token) {
+    try {
+      var data = _getCachedParseResult(params.token);
+      if (data) {
+        return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch (err) {}
+    return ContentService.createTextOutput(JSON.stringify({ error: 'NotFound', message: 'Token expired or invalid' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   var payload = {
     message: 'Success',
     timestamp: new Date().toISOString(),
@@ -24,6 +34,42 @@ function doGet(e) {
   var output = ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
   return output;
+}
+
+/** CacheService 單 key 約 100KB，分塊儲存解析結果，供側邊欄→編輯器帶入。 */
+var _parseResultChunkSize = 90 * 1024;
+
+function _storeParseResultChunked(pagesData) {
+  if (!pagesData || !Array.isArray(pagesData) || pagesData.length === 0) return null;
+  var json = JSON.stringify(pagesData);
+  var token = Utilities.getUuid().slice(0, 12).replace(/-/g, '');
+  var cache = CacheService.getScriptCache();
+  var i = 0;
+  var start = 0;
+  while (start < json.length) {
+    var chunk = json.slice(start, start + _parseResultChunkSize);
+    cache.put('obe_parse_' + token + '_' + i, chunk, 600);
+    start += _parseResultChunkSize;
+    i++;
+  }
+  cache.put('obe_parse_' + token + '_meta', String(i), 600);
+  return token;
+}
+
+function _getCachedParseResult(token) {
+  if (!token) return null;
+  var cache = CacheService.getScriptCache();
+  var meta = cache.get('obe_parse_' + token + '_meta');
+  if (!meta) return null;
+  var count = parseInt(meta, 10);
+  if (isNaN(count) || count <= 0) return null;
+  var parts = [];
+  for (var i = 0; i < count; i++) {
+    var part = cache.get('obe_parse_' + token + '_' + i);
+    if (part == null) return null;
+    parts.push(part);
+  }
+  return JSON.parse(parts.join(''));
 }
 
 /**

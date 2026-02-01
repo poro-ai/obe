@@ -183,7 +183,7 @@
     <button type="button" id="btnLoadPaste">從貼上 JSON 載入</button>
     <button type="button" id="btnExport" class="primary" disabled>匯出／儲存至 Google Sheets</button>
     <button type="button" id="btnInsertSlides" class="primary" disabled style="display: none;">插入至 Google 簡報</button>
-    <a href="index.html">← 返回上傳頁</a>
+    <a id="backLink" href="index.html">← 返回上傳頁</a>
   </div>
   <p class="sub" id="slidesLinkHint" style="display: none;">已連結簡報，載入內容後可點「插入至 Google 簡報」將選取內容插入該簡報。</p>
 
@@ -221,11 +221,13 @@
   var state = { pages: [] };
   var urlPresentationId = null;
   var urlGasUrl = null;
+  var urlToken = null;
 
   (function readUrlParams() {
     var params = new URLSearchParams(location.search);
     urlPresentationId = params.get('presentationId') || null;
     urlGasUrl = params.get('gasUrl') || null;
+    urlToken = params.get('token') || null;
     if (urlGasUrl) {
       gasUrl.value = urlGasUrl;
       localStorage.setItem(GAS_URL_KEY, urlGasUrl);
@@ -234,6 +236,11 @@
       document.getElementById('slidesLinkHint').style.display = 'block';
       var btnInsert = document.getElementById('btnInsertSlides');
       if (btnInsert) btnInsert.style.display = 'inline-block';
+      var backLink = document.getElementById('backLink');
+      if (backLink) {
+        backLink.href = 'https://docs.google.com/presentation/d/' + urlPresentationId + '/edit';
+        backLink.textContent = '← 返回 Google 簡報';
+      }
     }
   })();
 
@@ -478,8 +485,48 @@
   var btnInsertSlides = document.getElementById('btnInsertSlides');
   if (btnInsertSlides) btnInsertSlides.addEventListener('click', insertToSlides);
 
-  if (sessionStorage.getItem(EDITOR_STORAGE_KEY)) loadFromStorage();
-  else if (urlPresentationId) { gasUrlWrap.style.display = 'block'; }
+  function loadFromToken() {
+    if (!urlToken) return;
+    var baseUrl = (gasUrl.value || urlGasUrl || '').trim();
+    if (!baseUrl) {
+      showMsg('無法從側邊欄帶入結果：缺少 GAS Web App 網址。請從 Slides 側邊欄點「在瀏覽器開啟編輯器」進入。', true);
+      return;
+    }
+    var url = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'action=getParseResult&token=' + encodeURIComponent(urlToken);
+    showMsg('正在從側邊欄載入解析結果…');
+    fetch(url, { method: 'GET', mode: 'cors' })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          var data = JSON.parse(text);
+          if (data.error) {
+            showMsg('Token 已過期或無效，請在側邊欄重新解析後再點「在瀏覽器開啟編輯器」。', true);
+            return;
+          }
+          state.pages = normalizePages(Array.isArray(data) ? data : (data.pages ? data : { pages: data }));
+          if (state.pages.length === 0) {
+            showMsg('取得的內容沒有有效的 pages。', true);
+            return;
+          }
+          render();
+          gasUrlWrap.style.display = 'block';
+          showMsg('已從側邊欄載入 ' + state.pages.length + ' 頁。');
+        } catch (e) {
+          showMsg('載入失敗：' + e.message, true);
+        }
+      })
+      .catch(function (err) {
+        showMsg('請求失敗（請確認 GAS Web App 網址與 CORS）。', true);
+      });
+  }
+
+  if (urlToken && (gasUrl.value || urlGasUrl)) {
+    loadFromToken();
+  } else if (sessionStorage.getItem(EDITOR_STORAGE_KEY)) {
+    loadFromStorage();
+  } else if (urlPresentationId) {
+    gasUrlWrap.style.display = 'block';
+  }
 })();
   </script>
 </body>

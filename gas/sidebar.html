@@ -231,7 +231,7 @@
           .withFailureHandler(function (e) {
             progressText.textContent = '錯誤：' + (e.message || String(e));
           })
-          .getEditorUrlWithPresentationId();
+          .storeParseResultAndGetEditorUrl(pagesData);
       });
 
       fileInput.addEventListener('change', function () {
