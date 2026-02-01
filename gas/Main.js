@@ -36,12 +36,17 @@ function onInstall(e) {
 /**
  * Slides 附加元件首頁觸發（addOns.slides.homepageTrigger.runFunction）。
  * 必須存在並回傳 Card 陣列，否則會報「找不到指令碼函式：onSlidesHomepage」。
+ * 測試安裝時選單常不顯示，改在卡片上放按鈕直接開啟 AI 解析側邊欄。
  */
 function onSlidesHomepage(e) {
+  var openAction = CardService.newAction().setFunctionName('showSidebar');
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader().setTitle('OBE'))
     .addSection(CardService.newCardSection()
-      .addWidget(CardService.newTextParagraph().setText('請從擴充功能選單點「開啟 AI 解析側邊欄」使用 PDF 解析功能。')))
+      .addWidget(CardService.newTextParagraph().setText('上傳 PDF 後由 AI 解析圖文，再插入投影片。'))
+      .addWidget(CardService.newTextButton()
+        .setText('開啟 AI 解析側邊欄')
+        .setOnClickAction(openAction)))
     .build();
   return [card];
 }
