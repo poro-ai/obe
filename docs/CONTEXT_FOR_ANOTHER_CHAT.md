@@ -95,7 +95,7 @@
 - **getEditorUrlWithToken(editorToken)**：回傳 `{ url }`，為瀏覽器編輯器網址，帶 **presentationId**、**gasUrl**、**token**（用於向 GAS 取回解析結果）。側邊欄按鈕「在瀏覽器開啟編輯器（大畫面・可顯示圖片）」開啟此 URL。
 - **uploadToGcs(base64, fileName)**、**callGcfParse(bucket, objectName)**：與 web_app 邏輯一致。**callGcfParse 成功後**：GAS 以 **\_storeParseResultChunked** 將解析結果分塊暫存至 **CacheService**，並回傳 **token** 給 Main.js 存成 `savedEditorToken`，供組裝編輯器 URL。
 - **insertElementsToSlide(elements)**：將選取的 elements（type, content, description）插入目前投影片 — 圖片 30% 寬置左、文字方塊微軟正黑體 14pt 置右，每項下移 50pt。
-- **替代方案（瀏覽器編輯器）**：側邊欄受 GAS 限制（空間小、圖片常不顯示）。點「在瀏覽器開啟編輯器」→ 新分頁 `editor.html?presentationId=xxx&gasUrl=yyy&token=zzz`。編輯器載入時若有 `token` 會 **GET gasUrl?action=getParseResult&token=zzz** 從 Cache 取回資料；編輯後點「插入至 Google 簡報」會 **POST action=insertToSlides**，由 **web_app.js \_insertToSlides(body)** 用 `SlidesApp.openById(presentationId)` 寫入該簡報（預設第一張投影片）。需設定 **EDITOR_BASE_URL**、**GAS_WEB_APP_URL**；Web App 部署應「以造訪使用者的身分執行」以具備簡報寫入權限。
+- **替代方案（瀏覽器編輯器）**：側邊欄受 GAS 限制（空間小、圖片常不顯示）。點「在瀏覽器開啟編輯器」→ 新分頁 `editor.html?presentationId=xxx&gasUrl=yyy&token=zzz`。編輯器載入時若有 `token` 會 **GET gasUrl?action=getParseResult&token=zzz**（跨域用 JSONP）從 Cache 取回資料；**版本**以 **GET gasUrl?callback=xxx**（JSONP）取得。編輯後點「插入至 Google 簡報」會 **POST action=insertToSlides**，由 **web_app.js \_insertToSlides(body)** 寫入該簡報（預設第一張投影片）。**gasUrl 須為 /exec** 且部署「誰可以存取＝所有人」「執行身分＝以我的身分執行」；若需寫入使用者簡報，可另設「以造訪使用者的身分執行」或依需求調整。需設定 **EDITOR_BASE_URL**、**GAS_WEB_APP_URL**。
 
 ### 4.5 解析結果暫存與編輯器 token（web_app.js）
 
@@ -113,7 +113,7 @@
 - **GCF_PARSE_PDF_URL**：parse_pdf 的 URL（如 asia-east1）。
 - **SPREADSHEET_ID**（選填）：saveToSheets 時若已設則寫入該試算表，否則新建。
 - **EDITOR_BASE_URL**：前端編輯器網址（如 GitHub Pages URL），供組裝「在瀏覽器開啟編輯器」連結。
-- **GAS_WEB_APP_URL**：GAS Web App 部署網址；編輯器需此 URL 取解析結果與版本、POST 插入簡報。Web App 部署應設「以造訪使用者的身分執行」以具備簡報寫入權限。
+- **GAS_WEB_APP_URL**：GAS Web App **/exec** 部署網址；編輯器需此 URL 取解析結果與版本、POST 插入簡報。編輯器從 GitHub Pages 開啟時須用 **/exec** 且 **「誰可以存取」＝所有人**、**「執行身分」＝以我的身分執行**，否則未登入請求會 302 導向登入。**insertToSlides** 寫入使用者簡報時，該部署可另設「以造訪使用者的身分執行」或使用同一個 /exec（依需求）。
 
 ### 5.2 GCF / 本機
 
@@ -131,7 +131,7 @@
 
 - **GCF**：push 到 **main** 觸發 GitHub Actions（`.github/workflows/deploy.yml`），只部署 Cloud Function，不部署 GAS。
 - **GAS**：本機執行 **`npx @google/clasp push`** 同步 `gas/` 到 script.google.com；`.clasp.json` 在 .gitignore，需自行設定 scriptId。
-- **慣例**：使用者說「**go**」＝test → commit → push → **`npx @google/clasp push`**（先跑 test，通過才提交；最後同步 gas/ 到 Apps Script）。GAS 程式變更後需遞增 **BACKEND_VERSION**（如 `web_app.js`）。
+- **慣例**：使用者說「**go**」＝Quick test → commit → push → **`npx @google/clasp push`**（測試通過才提交；最後一律執行 clasp push）。**「commit and push all」** 亦須在 push 後執行 **`npx @google/clasp push`**。GAS 程式變更後需遞增 **BACKEND_VERSION**（如 `gas/web_app.js`）。
 - **測試慣例**：**每次修改完系統，都要做 unittest 與 integration test**；**新增功能時須一併新增對應單元測試**（見 `.cursorrules`）。**只跑必要測試**：**Quick**（日常／go 預設）＝`python -m pytest tests/unit/ -v --tb=short`（僅單元，約 20–40s）；**Full**（發布前／CI）＝`python -m pytest tests/ -v --tb=short`（含整合，需網路）。測試目錄：`tests/unit/`（單元）、`tests/test_cloud_connection.py`、`tests/test_doget.py`（整合）。未設定 `GAS_WEBAPP_URL` 時 `test_doget` 會跳過。測試涵蓋缺口與補足說明見 **`docs/TEST_COVERAGE_GAP.md`**。
 - **GAS Web App 網址**（供 `test_doget` 等使用）：支援兩個變數，依需要取用。**GAS_WEBAPP_DEV_URL**：測試用，pytest 時優先使用。**GAS_WEBAPP_URL**：正式用；未設 DEV 時 fallback。在 `.env` 寫入上述變數（或執行前設環境變數）；網址從 GAS「部署」→「網路應用程式」取得。`.env` 已在 .gitignore，不需提交。
 - **/exec 與 /dev 差異**：**/exec**＝版本化部署，執行的是「部署時選定的那一版」；新 code 要生效**必須重新部署**（建立新版本後，在「管理部署」裡把該 Web App 的版本改為新版本）。**/dev**＝測試部署（Head），執行**目前儲存的程式**；`clasp push` 或編輯器儲存後即生效，不需重新部署；僅供有編輯權限者，不能設「所有人」。詳見 `docs/VERSION_DISPLAY_DEBUG.md` 第零節。
@@ -147,9 +147,9 @@
 5. **Slides 選單**：若附加元件測試安裝後仍看不到選單，可改為**將腳本綁定到該簡報**（擴充功能 → Apps Script，貼上 OBE 程式），並用 **createMenu('OBE')** 確保選單出現。**未發布附加元件**測試：在 Apps Script 編輯器點「安裝」按鈕安裝，不需綁定簡報，以帳號為單位生效；詳見 `docs/SLIDES_ADDON_DEPLOY_CHECKLIST.md`。
 6. **首頁觸發**：manifest 若有 **addOns.common.homepageTrigger**、**addOns.slides.homepageTrigger**，必須實作 **onHomepage**、**onSlidesHomepage** 並回傳 Card 陣列，否則會報「找不到指令碼函式：onSlidesHomepage」。
 7. **側邊欄 UI（sidebar.html）**：頂部隱藏 `<input type="file">`，由質感「上傳 PDF」按鈕觸發；動態進度條三階段「正在讀取檔案...」「正在上傳雲端...」「AI 深度解析中...」；`id="content-list"` 渲染解析結果；類型過濾（全部/僅圖片/僅文字）、手風琴摺疊（accordion）顯示各頁。圖片：支援純 base64 字串（自動補 `data:image/png;base64,` 前綴），`<img>` 設 **onerror** 顯示「圖」佔位。
-8. **版本號**：單一來源為 **gas/web_app.js** 的 **BACKEND_VERSION**（如 `1.0.06`，第三碼 2 位數）；**getVersion()** 回傳該值。側邊欄與編輯器頁面底部、**首頁卡片**皆顯示版本。側邊欄用 `google.script.run.getVersion()`；編輯器與上傳頁**跨域**時用 **JSONP**（`?callback=xxx`）取版本，同源時用 fetch。版本沒出現時可依 **`docs/VERSION_DISPLAY_DEBUG.md`** 除錯；本機檢查 gas/ 是否含版本程式：`python scripts/verify_version_in_gas.py`。
+8. **版本號**：單一來源為 **gas/web_app.js** 的 **BACKEND_VERSION**（如 `1.0.06`，**patch 為 2 位數** 01–99）；**getVersion()** 回傳該值。**clasp 推送的是 gas/**（.clasp.json rootDir: ./gas）；根目錄 **web_app.js** 為舊檔/備份，勿當作 GAS 來源。側邊欄與編輯器頁面底部、**首頁卡片**皆顯示版本。側邊欄用 `google.script.run.getVersion()`；編輯器與上傳頁**跨域**時用 **JSONP**（`?callback=xxx`）取版本，同源時用 fetch。GAS 對 /exec 請求常回 **302** 再導向 script.googleusercontent.com/echo → **200 + JSONP**，屬正常；編輯器以 `<script src=".../exec?callback=xxx">` 載入時，跟隨 302 後取得 JSONP 即可顯示版號。版本沒出現時可依 **`docs/VERSION_DISPLAY_DEBUG.md`** 除錯；本機快速測試 GAS 是否回 JSONP：`python scripts/test_gas_jsonp_local.py [GAS_URL]`；檢查 gas/ 是否含版本程式：`python scripts/verify_version_in_gas.py`。
 9. **測試與 .env**：`tests/test_doget.py` 優先讀取 **GAS_WEBAPP_DEV_URL**，未設則用 **GAS_WEBAPP_URL**；可從專案根目錄 **.env** 載入（需 `python-dotenv`）。單元測試中 **get_secret** / **project_id** 相關案例已隔離 `os.environ`，避免本機真實環境變數導致失敗。
-10. **編輯器跨域**：編輯器從 GitHub Pages 等不同 origin 開啟時，**版本**與**解析結果**（getParseResult）皆以 **JSONP** 向 GAS 請求（GAS doGet 支援 `callback` 回傳 JSONP）。若 URL 無 gasUrl 但有 token 或 presentationId，編輯器會從 **localStorage** 讀上次使用的 GAS 網址補齊。
+10. **編輯器跨域**：編輯器從 GitHub Pages 等不同 origin 開啟時，**版本**與**解析結果**（getParseResult）皆以 **JSONP** 向 GAS 請求（GAS doGet 支援 `callback` 回傳 JSONP）。若 URL 無 gasUrl 但有 token 或 presentationId，編輯器會從 **localStorage** 讀上次使用的 GAS 網址補齊。**gasUrl 過長**時 `URLSearchParams.get('gasUrl')` 可能為 null，編輯器已加**備援**：從 `location.search` 手動擷取 `gasUrl=` 後的值。**insertToSlides** 已在 editor.html 實作（按鈕「插入至 Google 簡報」），先前遺漏會導致 ReferenceError 並阻斷 showVersion()。
 
 ---
 
@@ -157,9 +157,9 @@
 
 - **Slides 側邊欄**：NATIVE sandbox、上傳→進度條三階段→content-list（過濾/手風琴）、base64 圖片前綴與 onerror 佔位、「插入選取項目」「在瀏覽器開啟編輯器」按鈕；側邊欄與首頁卡片顯示版本（getVersion）。
 - **附加元件入口**：雙選單（擴充功能 + 頂層 OBE）、首頁卡片「開啟 AI 解析側邊欄」+ 版本：vX.X.X；未發布測試安裝見 `docs/SLIDES_ADDON_DEPLOY_CHECKLIST.md`。
-- **瀏覽器編輯器**：側邊欄點按鈕 → getEditorUrlWithToken → 新分頁 editor.html?presentationId&gasUrl&token；callGcfParse 成功後 \_storeParseResultChunked 存 Cache、回傳 token。編輯器**跨域**時以 **JSONP** 取版本與 getParseResult（GAS doGet 支援 `callback` 回傳 JSONP）；無 URL gasUrl 時從 **localStorage** 補 GAS 網址。POST insertToSlides → \_insertToSlides 寫入指定簡報。
-- **版本**：web_app.js BACKEND_VERSION、getVersion()；sidebar / editor / 首頁卡片 / index 上傳頁皆顯示；跨域用 JSONP。除錯見 `docs/VERSION_DISPLAY_DEBUG.md`、`python scripts/verify_version_in_gas.py`。
-- **測試**：**go**＝**Quick**（`pytest tests/unit/`）→ commit → push → **clasp push**；要完整再跑 **Full**（`pytest tests/`）。**新增功能須一併新增單元測試**。已補：schema、gcs_client、processor、file_handler、main_parse_pdf、gas_doget_jsonp_contract、editor_gas_contract。涵蓋說明見 `docs/TEST_COVERAGE_GAP.md`。
+- **瀏覽器編輯器**：側邊欄點按鈕 → getEditorUrlWithToken → 新分頁 editor.html?presentationId&gasUrl&token；callGcfParse 成功後 \_storeParseResultChunked 存 Cache、回傳 token。編輯器**跨域**時以 **JSONP** 取版本與 getParseResult（GAS doGet 支援 `callback` 回傳 JSONP）；無 URL gasUrl 時從 **localStorage** 補 GAS 網址。**gasUrl 備援**：若 `URLSearchParams.get('gasUrl')` 為 null（長 URL 等），從 `location.search` 手動擷取 `gasUrl=` 後的值。**insertToSlides** 已實作（POST action=insertToSlides → \_insertToSlides），先前遺漏會導致 ReferenceError 並阻斷 showVersion()。
+- **版本與 GAS 部署**：**gas/web_app.js** 為 clasp 來源（rootDir: ./gas）；根目錄 web_app.js 為舊檔/備份。BACKEND_VERSION 在 gas/web_app.js，patch 兩位數（1.0.06）。編輯器用 **/exec** 時，部署須「誰可以存取＝所有人」「執行身分＝以我的身分執行」，否則未登入會 302。GAS 對 /exec 常回 302 → script.googleusercontent.com/echo → 200 + JSONP，屬正常。除錯見 `docs/VERSION_DISPLAY_DEBUG.md`；本機快速測 GAS JSONP：`python scripts/test_gas_jsonp_local.py [URL]`；檢查 gas/ 版本程式：`python scripts/verify_version_in_gas.py`。
+- **測試與部署**：**go**＝Quick test → commit → push → **clasp push**；**「commit and push all」** 亦須含 **clasp push**。Full：`pytest tests/`。已補單元測試：schema、gcs_client、processor、file_handler、main_parse_pdf、gas_doget_jsonp_contract、editor_gas_contract。涵蓋見 `docs/TEST_COVERAGE_GAP.md`。
 
 ---
 
@@ -182,6 +182,7 @@
 | 版本顯示除錯 | `docs/VERSION_DISPLAY_DEBUG.md` |
 | 測試涵蓋缺口與補足 | `docs/TEST_COVERAGE_GAP.md` |
 | 本機檢查 gas/ 版本程式 | `scripts/verify_version_in_gas.py` |
+| 本機快速測 GAS JSONP（版本／getParseResult） | `scripts/test_gas_jsonp_local.py [GAS_URL]` |
 
 ---
 

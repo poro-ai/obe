@@ -175,6 +175,7 @@
   </style>
 </head>
 <body>
+  <p id="editor-version" class="sub" style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: var(--muted);">OBE v—</p>
   <h1>內容編輯器</h1>
   <p class="sub">載入 GCF 解析結果，以內容塊編輯後匯出至 Google Sheets。</p>
 
@@ -201,8 +202,6 @@
   <p class="msg" id="msg"></p>
 
   <div id="editor"></div>
-
-  <p id="editor-version" class="sub" style="margin-top: 2rem; font-size: 0.8rem; color: var(--muted);">OBE v—</p>
 
   <script>
 (function () {
@@ -359,8 +358,15 @@
         html += '<div class="block" draggable="true" data-page-index="' + pi + '" data-element-index="' + ei + '">';
         html += '<div class="block-header">' + (isImg ? '圖片' : '文字') + '</div>';
         if (isImg) {
-          var src = el.content && (el.content.indexOf('data:') === 0 || el.content.indexOf('http') === 0) ? el.content : '';
-          if (src) html += '<img class="preview" src="' + src.replace(/"/g, '&quot;') + '" alt="" />';
+          var raw = (el.content || '').trim();
+          var src = '';
+          if (raw.indexOf('data:') === 0 || raw.indexOf('http') === 0) {
+            src = raw;
+          } else if (raw.length > 0) {
+            /* 純 base64：與側邊欄一致，補上 data URI 前綴 */
+            src = (raw.indexOf('image/jpeg') >= 0 || raw.indexOf('image/jpg') >= 0) ? 'data:image/jpeg;base64,' + raw : 'data:image/png;base64,' + raw;
+          }
+          if (src) html += '<img class="preview" src="' + src.replace(/"/g, '&quot;') + '" alt="" onerror="this.style.display=\'none\';var d=this.nextElementSibling;if(d)d.style.display=\'block\';" /><div class="empty-state" style="padding:1rem;display:none;"><p>圖</p></div>';
           else html += '<div class="empty-state" style="padding:1rem;"><p>無預覽</p></div>';
           html += '<input type="text" class="desc-input" placeholder="圖片描述" value="' + (el.description || '').replace(/"/g, '&quot;') + '" data-page="' + pi + '" data-el="' + ei + '" data-field="description" />';
         } else {
