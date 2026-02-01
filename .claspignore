@@ -1,0 +1,73 @@
+# ============================================
+# .claspignore（clasp 推送時排除的檔案）
+# rootDir 為 ./gas，以下路徑相對於 gas/ 目錄
+# 僅推送：.gs、.js（GAS 腳本）、.html、appsscript.json
+# ============================================
+
+# Node
+node_modules/
+**/node_modules/**
+package.json
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git
+.git/
+**/.git/**
+
+# Python 虛擬環境與快取
+venv/
+.venv/
+**/venv/**
+**/.venv/**
+__pycache__/
+**/__pycache__/**
+*.py[cod]
+*$py.class
+.Python
+*.py
+**/*.py
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# 環境與機密
+.env
+.env.*
+*.pem
+*.key
+**/secrets*
+
+# 文件與雜項（不應進 GAS）
+*.md
+**/*.md
+README*
+CHANGELOG*
+LICENSE*
+docs/
+**/docs/**
+
+# 編輯器與系統
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+.cursorignore
+.cursorrules
+
+# 其他專案目錄（若誤放在 gas 下則排除）
+frontend/
+src/
+tests/
+scripts/
+.github/
+
+# 鎖檔與設定（非 GAS 所需）
+*.lock
+.clasp.json
+.clasp.json.example
+.gitignore
+.gcloudignore
