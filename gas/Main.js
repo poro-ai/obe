@@ -9,10 +9,16 @@
  */
 
 function onOpen(e) {
-  SlidesApp.getUi()
-    .createAddonMenu()
-    .addItem('開啟 AI 解析側邊欄', 'showSidebar')
-    .addToUi();
+  var ui = SlidesApp.getUi();
+  try {
+    ui.createAddonMenu()
+      .addItem('開啟 AI 解析側邊欄', 'showSidebar')
+      .addToUi();
+  } catch (err) {
+    ui.createMenu('OBE')
+      .addItem('開啟 AI 解析側邊欄', 'showSidebar')
+      .addToUi();
+  }
 }
 
 /**
