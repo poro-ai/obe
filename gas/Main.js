@@ -14,15 +14,16 @@
 
 function onOpen(e) {
   var ui = SlidesApp.getUi();
+  // 附加元件選單（正式安裝時會出現在「擴充功能」底下）
   try {
     ui.createAddonMenu()
       .addItem('開啟 AI 解析側邊欄', 'showSidebar')
       .addToUi();
-  } catch (err) {
-    ui.createMenu('OBE')
-      .addItem('開啟 AI 解析側邊欄', 'showSidebar')
-      .addToUi();
-  }
+  } catch (err) {}
+  // 頂層選單「OBE」：測試安裝時「擴充功能」底下常無項目，改從這裡開側邊欄
+  ui.createMenu('OBE')
+    .addItem('開啟 AI 解析側邊欄', 'showSidebar')
+    .addToUi();
 }
 
 /**
