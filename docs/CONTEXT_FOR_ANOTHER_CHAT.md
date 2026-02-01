@@ -146,7 +146,7 @@
 5. **Slides 選單**：若附加元件測試安裝後仍看不到選單，可改為**將腳本綁定到該簡報**（擴充功能 → Apps Script，貼上 OBE 程式），並用 **createMenu('OBE')** 確保選單出現。**未發布附加元件**測試：在 Apps Script 編輯器點「安裝」按鈕安裝，不需綁定簡報，以帳號為單位生效；詳見 `docs/SLIDES_ADDON_DEPLOY_CHECKLIST.md`。
 6. **首頁觸發**：manifest 若有 **addOns.common.homepageTrigger**、**addOns.slides.homepageTrigger**，必須實作 **onHomepage**、**onSlidesHomepage** 並回傳 Card 陣列，否則會報「找不到指令碼函式：onSlidesHomepage」。
 7. **側邊欄 UI（sidebar.html）**：頂部隱藏 `<input type="file">`，由質感「上傳 PDF」按鈕觸發；動態進度條三階段「正在讀取檔案...」「正在上傳雲端...」「AI 深度解析中...」；`id="content-list"` 渲染解析結果；類型過濾（全部/僅圖片/僅文字）、手風琴摺疊（accordion）顯示各頁。圖片：支援純 base64 字串（自動補 `data:image/png;base64,` 前綴），`<img>` 設 **onerror** 顯示「圖」佔位。
-8. **版本號**：單一來源為 **gas/web_app.js** 的 **BACKEND_VERSION**（如 `1.0.5`）；**getVersion()** 回傳該值。側邊欄與編輯器頁面底部、**首頁卡片**皆顯示版本。側邊欄用 `google.script.run.getVersion()`；編輯器與上傳頁**跨域**時用 **JSONP**（`?callback=xxx`）取版本，同源時用 fetch。版本沒出現時可依 **`docs/VERSION_DISPLAY_DEBUG.md`** 除錯；本機檢查 gas/ 是否含版本程式：`python scripts/verify_version_in_gas.py`。
+8. **版本號**：單一來源為 **gas/web_app.js** 的 **BACKEND_VERSION**（如 `1.0.06`，第三碼 2 位數）；**getVersion()** 回傳該值。側邊欄與編輯器頁面底部、**首頁卡片**皆顯示版本。側邊欄用 `google.script.run.getVersion()`；編輯器與上傳頁**跨域**時用 **JSONP**（`?callback=xxx`）取版本，同源時用 fetch。版本沒出現時可依 **`docs/VERSION_DISPLAY_DEBUG.md`** 除錯；本機檢查 gas/ 是否含版本程式：`python scripts/verify_version_in_gas.py`。
 9. **測試與 .env**：`tests/test_doget.py` 優先讀取 **GAS_WEBAPP_DEV_URL**，未設則用 **GAS_WEBAPP_URL**；可從專案根目錄 **.env** 載入（需 `python-dotenv`）。單元測試中 **get_secret** / **project_id** 相關案例已隔離 `os.environ`，避免本機真實環境變數導致失敗。
 10. **編輯器跨域**：編輯器從 GitHub Pages 等不同 origin 開啟時，**版本**與**解析結果**（getParseResult）皆以 **JSONP** 向 GAS 請求（GAS doGet 支援 `callback` 回傳 JSONP）。若 URL 無 gasUrl 但有 token 或 presentationId，編輯器會從 **localStorage** 讀上次使用的 GAS 網址補齊。
 

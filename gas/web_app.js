@@ -4,6 +4,7 @@
  * doPost：接收前端 PDF（Base64），上傳至 GCS，呼叫 GCF parse_pdf，回傳解析結果。
  *
  * 版本：每次有更動並部署後請遞增 BACKEND_VERSION，以便前端確認後端是否為最新版。
+ * 格式：major.minor.patch，patch 為 2 位數（01–99），例：1.0.06、1.0.07。
  *
  * 需在「專案設定」→「指令碼內容」設定：
  *   GCP_SA_CLIENT_EMAIL  - 服務帳號 email（例：xxx@obe-project-485614.iam.gserviceaccount.com）
