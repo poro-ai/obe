@@ -61,11 +61,13 @@ function onHomepage(e) {
 /**
  * 開啟 AI 解析側邊欄。引用的檔名須與左側檔案面板中的 HTML 檔名一致（不含副檔名）：
  * 檔案為 sidebar.html → createHtmlOutputFromFile('sidebar')。
+ * 使用 NATIVE sandbox 以允許解析結果中的 data URI 圖片顯示（IFRAME 預設會擋 data:）。
  */
 function showSidebar() {
   var html = HtmlService.createHtmlOutputFromFile('sidebar')
     .setTitle('AI 解析')
-    .setWidth(320);
+    .setWidth(320)
+    .setSandboxMode(HtmlService.SandboxMode.NATIVE);
   SlidesApp.getUi().showSidebar(html);
 }
 

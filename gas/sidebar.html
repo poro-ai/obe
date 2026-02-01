@@ -23,6 +23,9 @@
     .accordion-content.open { max-height: 2000px; }
     .filter-tab.active { background: #e5e7eb; font-weight: 600; }
     .card-preview { min-height: 48px; }
+    .obe-img-wrap { display: inline-flex; }
+    .obe-img-wrap .hidden { display: none !important; }
+    .obe-img-fallback { min-width: 48px; min-height: 48px; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 text-sm antialiased min-h-screen flex flex-col">
@@ -138,9 +141,19 @@
             html += '<label class="flex gap-2 p-1.5 rounded border border-gray-100 hover:bg-gray-50 card-preview cursor-pointer">';
             html += '<input type="checkbox" class="element-check mt-0.5" data-page-index="' + pi + '" data-el-index="' + item.ei + '" />';
             if (isImg) {
-              var src = el.content && (el.content.indexOf('data:') === 0 || el.content.indexOf('http') === 0) ? el.content : '';
-              if (src) html += '<img class="w-12 h-12 object-cover rounded flex-shrink-0" src="' + src.replace(/"/g, '&quot;') + '" alt="" />';
-              else html += '<div class="w-12 h-12 rounded bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">圖</div>';
+              var raw = (el.content || '').toString().trim();
+              var src = '';
+              if (raw.indexOf('data:') === 0 || raw.indexOf('http') === 0) {
+                src = raw;
+              } else if (raw.length > 0) {
+                src = 'data:image/png;base64,' + raw;
+              }
+              var safeSrc = src.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+              if (src) {
+                html += '<span class="obe-img-wrap flex-shrink-0 relative"><img class="obe-thumb w-12 h-12 object-cover rounded" src="' + safeSrc + '" alt="" loading="lazy" onerror="this.classList.add(\'hidden\');var n=this.nextElementSibling;if(n)n.classList.remove(\'hidden\');" /><div class="w-12 h-12 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs hidden obe-img-fallback">圖</div></span>';
+              } else {
+                html += '<div class="w-12 h-12 rounded bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">圖</div>';
+              }
               html += '<div class="min-w-0 flex-1"><p class="text-xs text-gray-600 truncate">' + escapeHtml((el.description || el.summary || '').slice(0, 40)) + '</p></div>';
             } else {
               html += '<div class="min-w-0 flex-1"><p class="text-xs text-gray-700 line-clamp-2">' + escapeHtml(firstTwoLines(el.content)) + '</p></div>';
