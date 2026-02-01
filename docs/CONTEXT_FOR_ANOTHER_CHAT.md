@@ -134,6 +134,7 @@
 - **慣例**：使用者說「**go**」＝test → commit → push → **`npx @google/clasp push`**（先跑 test，通過才提交；最後同步 gas/ 到 Apps Script）。GAS 程式變更後需遞增 **BACKEND_VERSION**（如 `web_app.js`）。
 - **測試慣例**：**每次修改完系統，都要做 unittest 與 integration test**；**新增功能時須一併新增對應單元測試**（見 `.cursorrules`）。**只跑必要測試**：**Quick**（日常／go 預設）＝`python -m pytest tests/unit/ -v --tb=short`（僅單元，約 20–40s）；**Full**（發布前／CI）＝`python -m pytest tests/ -v --tb=short`（含整合，需網路）。測試目錄：`tests/unit/`（單元）、`tests/test_cloud_connection.py`、`tests/test_doget.py`（整合）。未設定 `GAS_WEBAPP_URL` 時 `test_doget` 會跳過。測試涵蓋缺口與補足說明見 **`docs/TEST_COVERAGE_GAP.md`**。
 - **GAS Web App 網址**（供 `test_doget` 等使用）：支援兩個變數，依需要取用。**GAS_WEBAPP_DEV_URL**：測試用，pytest 時優先使用。**GAS_WEBAPP_URL**：正式用；未設 DEV 時 fallback。在 `.env` 寫入上述變數（或執行前設環境變數）；網址從 GAS「部署」→「網路應用程式」取得。`.env` 已在 .gitignore，不需提交。
+- **/exec 與 /dev 差異**：**/exec**＝版本化部署，執行的是「部署時選定的那一版」；新 code 要生效**必須重新部署**（建立新版本後，在「管理部署」裡把該 Web App 的版本改為新版本）。**/dev**＝測試部署（Head），執行**目前儲存的程式**；`clasp push` 或編輯器儲存後即生效，不需重新部署；僅供有編輯權限者，不能設「所有人」。詳見 `docs/VERSION_DISPLAY_DEBUG.md` 第零節。
 
 ---
 

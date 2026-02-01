@@ -4,6 +4,20 @@
 
 ---
 
+## 零、GAS Web App 網址：/exec 與 /dev（重要）
+
+| 網址結尾 | 對應部署類型 | 執行的程式 | 新 code 何時生效 |
+|----------|--------------|------------|------------------|
+| **/exec** | 版本化部署（Versioned） | 部署當下選定的**那一版** | **必須重新部署**：在 GAS 建立新版本後，到「部署 → 管理部署」編輯該 Web App，將「版本」改為新版本並儲存（或重新部署）。僅 `clasp push` 或編輯器儲存**不會**讓 /exec 用到最新 code。 |
+| **/dev** | 測試部署（Head） | **目前儲存的程式**（最新） | 只要在 Apps Script 編輯器儲存或 `clasp push` 後即生效，**不需重新部署**。 |
+
+- **gasUrl 用 /exec**：適合對外（例如編輯器在 GitHub Pages、設「所有人」存取）。要讓新 code 生效，**一定要**在 GAS 重新部署（新版本 + 更新該部署的版本）。
+- **gasUrl 用 /dev**：僅供開發測試（需具編輯權限）；會自動跑最新 code，但**不能**設為「所有人」對外使用。
+
+出處：[Create and manage deployments](https://developers.google.com/apps-script/concepts/deployments)、[Test a web app deployment](https://developers.google.com/apps-script/guides/web#test_a_web_app_deployment)。
+
+---
+
 ## 一、先確認本機 code 有沒有版本相關程式
 
 在本機專案根目錄執行（會檢查 `gas/` 裡是否有該有的程式）：
@@ -85,6 +99,27 @@ python scripts/verify_version_in_gas.py
 | 編輯器／上傳頁 | frontend/*.html + script.js | GET GAS Web App URL 或 JSONP `callback` |
 
 首頁與側邊欄都依賴同一個 GAS 專案裡的 **getVersion()**；若兩處都沒有版號，先確認 **web_app.js 是否在該專案內並已推送**。
+
+---
+
+## 五點五、本機快速測試：版本與解析結果是否為 JSONP（推薦）
+
+編輯器抓不到版本或解析結果時，可**在本機**用腳本直接對 GAS 發送與編輯器相同的 JSONP 請求，立刻判斷問題。
+
+**執行（擇一）：**
+
+```bash
+# 方式 1：.env 已設定 GAS_WEBAPP_DEV_URL 或 GAS_WEBAPP_URL
+python scripts/test_gas_jsonp_local.py
+
+# 方式 2：直接傳入 GAS 網址（/exec 或 /dev 皆可）
+python scripts/test_gas_jsonp_local.py "https://script.google.com/macros/s/你的ID/exec"
+```
+
+**結果解讀：**
+
+- **[版本請求] OK**、**[解析結果請求] OK** → GAS 有回傳 JSONP，編輯器理論上可取得；若仍抓不到，請確認編輯器用的 gasUrl 與此 URL 一致、且部署「誰可以存取」為「所有人」（若用 /exec）。
+- **[版本請求] FAIL**、**[解析結果請求] FAIL**，訊息為 **GAS returns plain JSON, not JSONP** → 目前部署的 GAS **沒有**回傳 `callback(JSON)`，而是回傳純 JSON；編輯器跨域時無法解析。**處理**：在 GAS「部署 → 管理部署」將該 Web App 的「版本」改為新版本並儲存（重新部署），或改用 **/dev** 網址（僅限有編輯權限者）。
 
 ---
 

@@ -570,7 +570,10 @@
       };
       var script = document.createElement('script');
       script.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
-      script.onerror = function () { setVer(null); delete window[cbName]; };
+      script.onerror = function () {
+        setVer('?'); /* 請求失敗：網路或 /dev 需登入，或 GAS 未回傳 JSONP */
+        delete window[cbName];
+      };
       document.head.appendChild(script);
       return;
     }
