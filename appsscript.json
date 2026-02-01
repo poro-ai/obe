@@ -6,8 +6,11 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/presentations",
     "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/workspace.linkpreview",
     "https://www.googleapis.com/auth/script.external_request",
-    "https://www.googleapis.com/auth/drive.file"
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/script.locale"
   ],
   "urlFetchWhitelist": [
     "https://oauth2.googleapis.com/",
@@ -16,10 +19,17 @@
   ],
   "addOns": {
     "common": {
-      "name": "OBE 助手",
+      "name": "OBE",
       "logoUrl": "https://poro-ai.github.io/obe/img/obe-logo.jpg",
-      "useLocaleFromApp": true
+      "useLocaleFromApp": true,
+      "homepageTrigger": {
+        "runFunction": "onHomepage"
+      }
     },
-    "slides": {}
+    "slides": {
+      "homepageTrigger": {
+        "runFunction": "onSlidesHomepage"
+      }
+    }
   }
 }

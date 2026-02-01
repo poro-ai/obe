@@ -29,6 +29,26 @@ function onInstall(e) {
 }
 
 /**
+ * Slides 附加元件首頁觸發（addOns.slides.homepageTrigger.runFunction）。
+ * 必須存在並回傳 Card 陣列，否則會報「找不到指令碼函式：onSlidesHomepage」。
+ */
+function onSlidesHomepage(e) {
+  var card = CardService.newCardBuilder()
+    .setHeader(CardService.newCardHeader().setTitle('OBE'))
+    .addSection(CardService.newCardSection()
+      .addWidget(CardService.newTextParagraph().setText('請從擴充功能選單點「開啟 AI 解析側邊欄」使用 PDF 解析功能。')))
+    .build();
+  return [card];
+}
+
+/**
+ * 通用附加元件首頁觸發（addOns.common.homepageTrigger.runFunction）。
+ */
+function onHomepage(e) {
+  return onSlidesHomepage(e);
+}
+
+/**
  * 開啟 AI 解析側邊欄。引用的檔名須與左側檔案面板中的 HTML 檔名一致（不含副檔名）：
  * 檔案為 sidebar.html → createHtmlOutputFromFile('sidebar')。
  */

@@ -6,10 +6,11 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/presentations",
     "https://www.googleapis.com/auth/script.container.ui",
-    "https://www.googleapis.com/auth/workspace.linkpreview0",
+    "https://www.googleapis.com/auth/workspace.linkpreview",
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file"
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/script.locale"
   ],
   "urlFetchWhitelist": [
     "https://oauth2.googleapis.com/",
@@ -19,7 +20,7 @@
   "addOns": {
     "common": {
       "name": "OBE",
-      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/slides_2020_48dp.png",
+      "logoUrl": "https://poro-ai.github.io/obe/img/obe-logo.jpg",
       "useLocaleFromApp": true,
       "homepageTrigger": {
         "runFunction": "onHomepage"
@@ -30,9 +31,5 @@
         "runFunction": "onSlidesHomepage"
       }
     }
-  },
-  "webapp": {
-    "access": "ANYONE",
-    "executeAs": "USER_DEPLOYING"
   }
 }
