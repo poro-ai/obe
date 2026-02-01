@@ -38,6 +38,7 @@
 ## 測試慣例
 
 - **每次修改完系統，都要做 unittest 與 integration test**，再進行 commit / push。
+- **Code 有更動時，Agent 須自動執行 test**：完成程式變更後先跑 `python -m pytest tests/ -v --tb=short`，通過後再進行 commit / push；若使用者要求「commit and push」，須先跑 test，通過才提交，失敗則不提交並回報。
 - 本機執行：`python -m pytest tests/ -v --tb=short`。
 - 測試範圍：`tests/unit/`（單元）、`tests/test_cloud_connection.py`、`tests/test_doget.py` 等（整合）；未設定 `GAS_WEBAPP_URL` 時 `test_doget` 會跳過。
 

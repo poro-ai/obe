@@ -29,6 +29,18 @@
       setBackendVersion('未設定網址');
       return;
     }
+    function tryJsonp() {
+      var cbName = 'obe_backend_ver_' + Date.now();
+      window[cbName] = function (data) {
+        setBackendVersion(data && data.version ? data.version : '—');
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      };
+      var script = document.createElement('script');
+      script.src = gasUrl + (gasUrl.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = function () { setBackendVersion('連線失敗'); delete window[cbName]; };
+      document.head.appendChild(script);
+    }
     fetch(gasUrl, { method: 'GET', mode: 'cors' })
       .then(function (res) { return res.text(); })
       .then(function (text) {
@@ -39,9 +51,7 @@
           setBackendVersion('取得失敗');
         }
       })
-      .catch(function () {
-        setBackendVersion('連線失敗');
-      });
+      .catch(tryJsonp);
   }
 
   fetchBackendVersion();

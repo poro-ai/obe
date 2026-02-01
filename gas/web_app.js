@@ -36,9 +36,12 @@ function doGet(e) {
     params: params,
     version: BACKEND_VERSION
   };
-  var output = ContentService.createTextOutput(JSON.stringify(payload))
+  if (params.callback) {
+    return ContentService.createTextOutput(params.callback + '(' + JSON.stringify(payload) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
-  return output;
 }
 
 /** CacheService 單 key 約 100KB，分塊儲存解析結果，供側邊欄→編輯器帶入。 */

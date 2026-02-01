@@ -526,21 +526,33 @@
     var baseUrl = (gasUrl.value || urlGasUrl || '').trim();
     var el = document.getElementById('editor-version');
     if (!el) return;
-    if (baseUrl) {
-      fetch(baseUrl, { method: 'GET', mode: 'cors' })
-        .then(function (res) { return res.text(); })
-        .then(function (text) {
-          try {
-            var data = JSON.parse(text);
-            el.textContent = 'OBE v' + (data.version || '—');
-          } catch (e) {
-            el.textContent = 'OBE v—';
-          }
-        })
-        .catch(function () { el.textContent = 'OBE v—'; });
-    } else {
+    if (!baseUrl) {
       el.textContent = 'OBE v—';
+      return;
     }
+    function setVer(v) { el.textContent = 'OBE v' + (v || '—'); }
+    fetch(baseUrl, { method: 'GET', mode: 'cors' })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          var data = JSON.parse(text);
+          setVer(data.version);
+        } catch (e) {
+          setVer(null);
+        }
+      })
+      .catch(function () {
+        var cbName = 'obe_ver_' + Date.now();
+        window[cbName] = function (data) {
+          setVer(data && data.version);
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        var script = document.createElement('script');
+        script.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+        script.onerror = function () { setVer(null); delete window[cbName]; };
+        document.head.appendChild(script);
+      });
   }
 
   if (urlToken && (gasUrl.value || urlGasUrl)) {

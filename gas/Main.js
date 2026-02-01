@@ -40,10 +40,12 @@ function onInstall(e) {
  */
 function onSlidesHomepage(e) {
   var openAction = CardService.newAction().setFunctionName('showSidebar');
+  var version = (typeof getVersion === 'function' ? getVersion() : null) || '—';
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader().setTitle('OBE'))
     .addSection(CardService.newCardSection()
       .addWidget(CardService.newTextParagraph().setText('上傳 PDF 後由 AI 解析圖文，再插入投影片。'))
+      .addWidget(CardService.newTextParagraph().setText('版本：v' + version))
       .addWidget(CardService.newTextButton()
         .setText('開啟 AI 解析側邊欄')
         .setOnClickAction(openAction)))

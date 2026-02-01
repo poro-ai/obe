@@ -73,10 +73,16 @@
 
   <script>
     (function () {
-      google.script.run.withSuccessHandler(function (v) {
-        var el = document.getElementById('sidebar-version');
-        if (el) el.textContent = 'OBE v' + (v || '—');
-      }).getVersion();
+      google.script.run
+        .withSuccessHandler(function (v) {
+          var el = document.getElementById('sidebar-version');
+          if (el) el.textContent = 'OBE v' + (v || '—');
+        })
+        .withFailureHandler(function () {
+          var el = document.getElementById('sidebar-version');
+          if (el) el.textContent = 'OBE v?';
+        })
+        .getVersion();
 
       var fileInput = document.getElementById('file-input');
       var btnUpload = document.getElementById('btn-upload');
