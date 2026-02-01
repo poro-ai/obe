@@ -74,17 +74,14 @@ function getEditorUrlWithPresentationId() {
 }
 
 /**
- * 將側邊欄的解析結果暫存至 CacheService，並回傳帶 token 的編輯器網址，供「在瀏覽器開啟編輯器」時帶入資料。
- * 若有 pagesData 則儲存並在 URL 加上 token；編輯器載入時會依 token 取回並顯示。
+ * 取得帶 token 的編輯器網址（token 由側邊欄在解析完成時從 callGcfParse 取得並保存）。
+ * 供「在瀏覽器開啟編輯器」按鈕使用：傳入 savedEditorToken，若有則附加至 URL。
  */
-function storeParseResultAndGetEditorUrl(pagesData) {
+function getEditorUrlWithToken(editorToken) {
   var obj = getEditorUrlWithPresentationId();
   var url = obj.url;
-  if (pagesData && Array.isArray(pagesData) && pagesData.length > 0) {
-    try {
-      var token = _storeParseResultChunked(pagesData);
-      if (token) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
-    } catch (err) {}
+  if (editorToken) {
+    url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(editorToken);
   }
   return { url: url };
 }
@@ -123,10 +120,10 @@ function uploadToGcs(fileDataBase64, fileName) {
 }
 
 /**
- * 呼叫 GCF parse_pdf，取得解析結果。
+ * 呼叫 GCF parse_pdf，取得解析結果。成功時在伺服器暫存 pages 並回傳 editorToken，供「在瀏覽器開啟編輯器」帶入資料。
  * @param {string} bucket - GCS bucket 名稱
  * @param {string} objectName - GCS 物件路徑
- * @returns {{ success: boolean, pages: Array, error: string|null, count: number }}
+ * @returns {{ success: boolean, pages: Array, error: string|null, count: number, editorToken: string|null }}
  */
 function callGcfParse(bucket, objectName) {
   var gcfUrl = _getProp('GCF_PARSE_PDF_URL') || 'https://asia-east1-obe-project-485614.cloudfunctions.net/parse_pdf';
@@ -135,11 +132,19 @@ function callGcfParse(bucket, objectName) {
   var data = res.data || {};
   var success = code >= 200 && code < 300;
   var count = data.count != null ? data.count : (data.pages && data.pages.length) || 0;
+  var pages = data.pages || [];
+  var editorToken = null;
+  if (success && pages.length > 0) {
+    try {
+      editorToken = _storeParseResultChunked(pages);
+    } catch (e) {}
+  }
   return {
     success: success,
-    pages: data.pages || [],
+    pages: pages,
     error: success ? null : (data.error || 'GCF returned ' + code),
-    count: count
+    count: count,
+    editorToken: editorToken
   };
 }
 

@@ -68,10 +68,16 @@
         <p class="text-gray-400 text-xs py-4 text-center">上傳 PDF 後將在此顯示 AI 解析結果</p>
       </div>
     </div>
+    <p id="sidebar-version" class="text-gray-400 text-xs py-1 px-2 text-center border-t border-gray-200 mt-1">OBE v—</p>
   </div>
 
   <script>
     (function () {
+      google.script.run.withSuccessHandler(function (v) {
+        var el = document.getElementById('sidebar-version');
+        if (el) el.textContent = 'OBE v' + (v || '—');
+      }).getVersion();
+
       var fileInput = document.getElementById('file-input');
       var btnUpload = document.getElementById('btn-upload');
       var progressArea = document.getElementById('progress-area');
@@ -82,6 +88,7 @@
       var btnInsert = document.getElementById('btn-insert');
       var currentFilter = 'all';
       var pagesData = [];
+      var savedEditorToken = null;
 
       function setProgress(percent, text) {
         progressArea.classList.remove('hidden');
@@ -231,7 +238,7 @@
           .withFailureHandler(function (e) {
             progressText.textContent = '錯誤：' + (e.message || String(e));
           })
-          .storeParseResultAndGetEditorUrl(pagesData);
+          .getEditorUrlWithToken(savedEditorToken);
       });
 
       fileInput.addEventListener('change', function () {
@@ -255,6 +262,7 @@
                   setProgress(100, '完成');
                   if (result.success) {
                     renderResult(result.pages);
+                    savedEditorToken = result.editorToken || null;
                     progressText.textContent = '完成 · 共 ' + (result.count || 0) + ' 頁';
                   } else {
                     contentList.innerHTML = '<p class="text-red-600 text-xs py-2">' + escapeHtml(result.error || '解析失敗') + '</p>';

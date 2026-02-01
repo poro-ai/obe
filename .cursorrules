@@ -35,6 +35,12 @@
 - 型別標註（type hints）需完整。
 - 新功能需對應單元測試（tests/unit）或整合測試（tests/integration）。
 
+## 測試慣例
+
+- **每次修改完系統，都要做 unittest 與 integration test**，再進行 commit / push。
+- 本機執行：`python -m pytest tests/ -v --tb=short`。
+- 測試範圍：`tests/unit/`（單元）、`tests/test_cloud_connection.py`、`tests/test_doget.py` 等（整合）；未設定 `GAS_WEBAPP_URL` 時 `test_doget` 會跳過。
+
 ## 格式規範
 
 - 偏好使用 **繁體中文**。
@@ -55,3 +61,9 @@
 - **Auto-Naming:** 每個新的對話開始時，Agent 必須根據當前任務（如 GAS 開發、GCP 設定）自動為該對話命名，嚴禁使用預設的 'New Chat'。
 - **History Visibility:** 提醒使用者定期點擊右上角的歷史圖示（或使用指令面板搜尋 Recent）來切換對話。
 - **Context Awareness:** 每次重啟專案時，主動引導使用者接續上一次未完成的 Agent 任務。
+
+## Context 文件更新約定
+
+- **時機：** 當對話明顯變長、或發現對話已被 summarize（系統壓縮過往內容）時，**主動**整理並更新 `docs/CONTEXT_FOR_ANOTHER_CHAT.md`。
+- **內容：** 將本對話中已確定的架構變更、新實作重點、API 與環境變數、待辦或已知注意點，合併進該文件；可同步更新「八、最近實作摘要」與相關章節。
+- **觸發：** 使用者說「更新 context 文件」或「整理 CONTEXT」時，一律執行上述更新。

@@ -67,12 +67,12 @@ def test_local_mode_get_secret_from_env(local_mode_env, mock_dotenv):
 
 def test_local_mode_get_secret_missing_returns_none(local_mode_env, mock_dotenv):
     """local 模式下，不存在的 key 回傳 None。"""
-    with patch.dict(os.environ, {}, clear=False):
+    with patch.dict(os.environ, {"ENV_MODE": "local"}, clear=False):
         for k in ("GEMINI_API_KEY", "PROJECT_ID"):
             os.environ.pop(k, None)
-    loader = ConfigLoader(env_mode="local")
-    assert loader.get_secret("GEMINI_API_KEY") is None
-    assert loader.get_secret("MISSING_KEY") is None
+        loader = ConfigLoader(env_mode="local")
+        assert loader.get_secret("GEMINI_API_KEY") is None
+        assert loader.get_secret("MISSING_KEY") is None
 
 
 def test_production_mode_get_secret_from_secret_manager(production_mode_env, mock_secret_manager):
@@ -92,10 +92,10 @@ def test_production_mode_no_project_id_returns_none():
     with patch.dict(os.environ, {"ENV_MODE": "production"}, clear=False):
         os.environ.pop("PROJECT_ID", None)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
-    with patch("google.cloud.secretmanager.SecretManagerServiceClient"):
-        loader = ConfigLoader(env_mode="production")
-        value = loader.get_secret("GEMINI_API_KEY")
-    assert value is None
+        with patch("google.cloud.secretmanager.SecretManagerServiceClient"):
+            loader = ConfigLoader(env_mode="production")
+            value = loader.get_secret("GEMINI_API_KEY")
+        assert value is None
 
 
 def test_production_mode_secret_manager_exception_returns_none(production_mode_env):
