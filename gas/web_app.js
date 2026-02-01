@@ -23,12 +23,19 @@ function doGet(e) {
   if (params.action === 'getParseResult' && params.token) {
     try {
       var data = _getCachedParseResult(params.token);
-      if (data) {
-        return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+      var body = data ? data : { error: 'NotFound', message: 'Token expired or invalid' };
+      if (params.callback) {
+        return ContentService.createTextOutput(params.callback + '(' + JSON.stringify(body) + ')')
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
       }
+      return ContentService.createTextOutput(JSON.stringify(body)).setMimeType(ContentService.MimeType.JSON);
     } catch (err) {}
-    return ContentService.createTextOutput(JSON.stringify({ error: 'NotFound', message: 'Token expired or invalid' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    var errBody = { error: 'NotFound', message: 'Token expired or invalid' };
+    if (params.callback) {
+      return ContentService.createTextOutput(params.callback + '(' + JSON.stringify(errBody) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return ContentService.createTextOutput(JSON.stringify(errBody)).setMimeType(ContentService.MimeType.JSON);
   }
   var payload = {
     message: 'Success',

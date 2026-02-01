@@ -233,6 +233,9 @@
     if (urlGasUrl) {
       gasUrl.value = urlGasUrl;
       localStorage.setItem(GAS_URL_KEY, urlGasUrl);
+    } else if ((urlToken || urlPresentationId) && localStorage.getItem(GAS_URL_KEY)) {
+      urlGasUrl = localStorage.getItem(GAS_URL_KEY);
+      gasUrl.value = urlGasUrl;
     }
     if (urlPresentationId) {
       document.getElementById('slidesLinkHint').style.display = 'block';
@@ -491,28 +494,51 @@
     if (!urlToken) return;
     var baseUrl = (gasUrl.value || urlGasUrl || '').trim();
     if (!baseUrl) {
-      showMsg('無法從側邊欄帶入結果：缺少 GAS Web App 網址。請從 Slides 側邊欄點「在瀏覽器開啟編輯器」進入。', true);
+      showMsg('無法從側邊欄帶入結果：缺少 GAS Web App 網址。請在下方輸入 GAS Web App 網址，或從 Slides 側邊欄點「在瀏覽器開啟編輯器」進入。', true);
       return;
     }
     var url = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'action=getParseResult&token=' + encodeURIComponent(urlToken);
+    var isCrossOrigin = false;
+    try {
+      isCrossOrigin = new URL(baseUrl).origin !== location.origin;
+    } catch (e) {}
     showMsg('正在從側邊欄載入解析結果…');
+    function handleData(data) {
+      if (data && data.error) {
+        showMsg('Token 已過期或無效，請在側邊欄重新解析後再點「在瀏覽器開啟編輯器」。', true);
+        return;
+      }
+      state.pages = normalizePages(Array.isArray(data) ? data : (data && data.pages ? data : (data ? { pages: data } : [])));
+      if (state.pages.length === 0) {
+        showMsg('取得的內容沒有有效的 pages。', true);
+        return;
+      }
+      render();
+      gasUrlWrap.style.display = 'block';
+      showMsg('已從側邊欄載入 ' + state.pages.length + ' 頁。');
+    }
+    if (isCrossOrigin) {
+      var cbName = 'obe_parse_' + Date.now();
+      window[cbName] = function (data) {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        handleData(data);
+      };
+      var script = document.createElement('script');
+      script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = function () {
+        delete window[cbName];
+        showMsg('請求失敗（請確認 GAS Web App 網址）。', true);
+      };
+      document.head.appendChild(script);
+      return;
+    }
     fetch(url, { method: 'GET', mode: 'cors' })
       .then(function (res) { return res.text(); })
       .then(function (text) {
         try {
           var data = JSON.parse(text);
-          if (data.error) {
-            showMsg('Token 已過期或無效，請在側邊欄重新解析後再點「在瀏覽器開啟編輯器」。', true);
-            return;
-          }
-          state.pages = normalizePages(Array.isArray(data) ? data : (data.pages ? data : { pages: data }));
-          if (state.pages.length === 0) {
-            showMsg('取得的內容沒有有效的 pages。', true);
-            return;
-          }
-          render();
-          gasUrlWrap.style.display = 'block';
-          showMsg('已從側邊欄載入 ' + state.pages.length + ' 頁。');
+          handleData(data);
         } catch (e) {
           showMsg('載入失敗：' + e.message, true);
         }
@@ -531,6 +557,23 @@
       return;
     }
     function setVer(v) { el.textContent = 'OBE v' + (v || '—'); }
+    var isCrossOrigin = false;
+    try {
+      isCrossOrigin = new URL(baseUrl).origin !== location.origin;
+    } catch (e) {}
+    if (isCrossOrigin) {
+      var cbName = 'obe_ver_' + Date.now();
+      window[cbName] = function (data) {
+        setVer(data && data.version);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      };
+      var script = document.createElement('script');
+      script.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = function () { setVer(null); delete window[cbName]; };
+      document.head.appendChild(script);
+      return;
+    }
     fetch(baseUrl, { method: 'GET', mode: 'cors' })
       .then(function (res) { return res.text(); })
       .then(function (text) {
@@ -541,18 +584,7 @@
           setVer(null);
         }
       })
-      .catch(function () {
-        var cbName = 'obe_ver_' + Date.now();
-        window[cbName] = function (data) {
-          setVer(data && data.version);
-          delete window[cbName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-        };
-        var script = document.createElement('script');
-        script.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
-        script.onerror = function () { setVer(null); delete window[cbName]; };
-        document.head.appendChild(script);
-      });
+      .catch(function () { setVer(null); });
   }
 
   if (urlToken && (gasUrl.value || urlGasUrl)) {

@@ -37,6 +37,7 @@
 
 ## 測試慣例
 
+- **新增功能時，須一併新增對應的單元測試**：實作新功能（新模組、新 API、新業務邏輯）的同時，在 `tests/unit/`（或 `tests/integration/`）新增或擴充測試檔，覆蓋正常流程與關鍵錯誤路徑；不可只寫功能不寫測試。
 - **每次修改完系統，都要做 unittest 與 integration test**，再進行 commit / push。
 - **Code 有更動時，Agent 須自動執行 test**：完成程式變更後先跑 `python -m pytest tests/ -v --tb=short`，通過後再進行 commit / push；若使用者要求「commit and push」，須先跑 test，通過才提交，失敗則不提交並回報。
 - **使用者說「go」**：等同「test then commit and push all」— 先跑 test，通過後再 commit 並 push 全部變更；**最後執行 `npx @google/clasp push`** 將 gas/ 同步到 Apps Script。失敗則不提交並回報。
