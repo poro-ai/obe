@@ -490,6 +490,65 @@
       });
   }
 
+  function insertToSlides() {
+    var url = (gasUrl.value || urlGasUrl || '').trim();
+    if (!url) {
+      showMsg('請輸入 GAS Web App 網址。', true);
+      return;
+    }
+    if (!urlPresentationId) {
+      showMsg('缺少簡報 ID，請從側邊欄「在瀏覽器開啟編輯器」進入。', true);
+      return;
+    }
+    collectState();
+    var elements = [];
+    state.pages.forEach(function (p) {
+      (p.elements || []).forEach(function (el) {
+        elements.push({
+          type: el.type || 'text',
+          content: (el.content || '').toString(),
+          description: (el.description || '').toString()
+        });
+      });
+    });
+    if (elements.length === 0) {
+      showMsg('尚無內容可插入，請先載入解析結果。', true);
+      return;
+    }
+    showMsg('插入中…');
+    var btnInsert = document.getElementById('btnInsertSlides');
+    if (btnInsert) btnInsert.disabled = true;
+    fetch(url, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'insertToSlides',
+        presentationId: urlPresentationId,
+        elements: elements,
+        slideIndex: 0
+      })
+    })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          var data = JSON.parse(text);
+          if (data.success) {
+            showMsg('已插入至 Google 簡報（第 ' + (data.slideIndex + 1) + ' 張投影片）。');
+          } else {
+            showMsg(data.error || '插入失敗', true);
+          }
+        } catch (e) {
+          showMsg('回應解析失敗', true);
+        }
+        if (btnInsert) btnInsert.disabled = false;
+      })
+      .catch(function (err) {
+        showMsg('請求失敗（網路或 CORS）', true);
+        if (btnInsert) btnInsert.disabled = false;
+      });
+  }
+
   btnLoadStorage.addEventListener('click', loadFromStorage);
   btnLoadPaste.addEventListener('click', loadFromPaste);
   btnPasteGo.addEventListener('click', doPasteGo);
