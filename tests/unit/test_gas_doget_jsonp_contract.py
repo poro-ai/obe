@@ -9,7 +9,7 @@ import re
 import pytest
 
 # 模擬 GAS doGet 回傳的 JSONP 格式（與 web_app.js 一致）
-BACKEND_VERSION = "1.0.08"
+BACKEND_VERSION = "1.0.09"
 
 
 def build_version_jsonp(callback: str) -> str:

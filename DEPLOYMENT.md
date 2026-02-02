@@ -46,7 +46,7 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions
 | **GCP_PROJECT_ID** | GCP 專案 ID，用於部署 Cloud Functions | 例如：`obe-project-485614` |
 | **GCP_SA_KEY** | 具備 Cloud Functions 部署權限的服務帳號 **整份 JSON 金鑰內容** | 從 GCP Console 建立服務帳號並下載 JSON，將檔案內容整段貼上 |
 | **GEMINI_API_KEY** | Gemini API 金鑰，供 GCF 呼叫 File API 上傳／解析 PDF | 從 [Google AI Studio](https://aistudio.google.com/apikey) 取得，貼上字串 |
-| **CLASP_JSON** | （GAS 用）本機 `.clasp.json` 內容，供 CI 執行 clasp push | 單行 JSON，例：`{"scriptId":"你的 Apps Script 專案 ID","rootDir":"./gas"}` |
+| **CLASP_JSON** | （GAS 用）本機 **`.clasp.json` 檔案內容**（不是 Web App 網址） | 單行 JSON，例：`{"scriptId":"你的 Apps Script 專案 ID","rootDir":"./gas"}`。若 CI 出現 `invalid character 'x' at 1:3`，多半是誤貼成 **https://script.google.com/...** 網址，請改貼 .clasp.json 的 JSON 內容。 |
 | **CLASPRC_JSON** | （GAS 用）本機 clasp login 後 `~/.clasprc.json` 的**完整內容** | 在本機執行 `clasp login` 後，將 `~/.clasprc.json`（或 Windows `%USERPROFILE%\.clasprc.json`）**整份**貼上（含最後的 `}`）。若 CI 出現 "Unexpected end of JSON input"，多半是貼上時漏掉結尾或換行被截斷，請重新貼上完整 JSON。 |
 
 ---

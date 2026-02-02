@@ -183,8 +183,10 @@
     <button type="button" id="btnLoadStorage">從上次解析結果載入</button>
     <button type="button" id="btnLoadPaste">從貼上 JSON 載入</button>
     <button type="button" id="btnExport" class="primary" disabled>匯出／儲存至 Google Sheets</button>
+    <button type="button" id="btnImportProductMaster" class="primary" disabled>匯入至商品主檔</button>
     <button type="button" id="btnInsertSlides" class="primary" disabled style="display: none;">插入至 Google 簡報</button>
     <a id="backLink" href="index.html">← 返回上傳頁</a>
+    <a href="products.html">商品主檔／選品</a>
   </div>
   <p class="sub" id="slidesLinkHint" style="display: none;">已連結簡報，載入內容後可點「插入至 Google 簡報」將選取內容插入該簡報。</p>
 
@@ -342,6 +344,8 @@
 
   function render() {
     btnExport.disabled = state.pages.length === 0;
+    var btnImportPM = document.getElementById('btnImportProductMaster');
+    if (btnImportPM) btnImportPM.disabled = state.pages.length === 0;
     var btnInsert = document.getElementById('btnInsertSlides');
     if (btnInsert) btnInsert.disabled = !urlPresentationId || state.pages.length === 0;
     if (state.pages.length === 0) {
@@ -502,6 +506,48 @@
       });
   }
 
+  function importToProductMaster() {
+    var url = (gasUrl.value || urlGasUrl || '').trim();
+    if (!url) {
+      showMsg('請輸入 GAS Web App 網址。', true);
+      return;
+    }
+    collectState();
+    if (state.pages.length === 0) {
+      showMsg('尚無內容可匯入，請先載入解析結果。', true);
+      return;
+    }
+    showMsg('匯入至商品主檔中…（原文與圖片將上傳 GCS）');
+    var btnImportPM = document.getElementById('btnImportProductMaster');
+    if (btnImportPM) btnImportPM.disabled = true;
+    fetch(url, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'importToProductMaster', pages: state.pages })
+    })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          var data = JSON.parse(text);
+          if (data.success && data.count > 0) {
+            showMsg('已匯入 ' + data.count + ' 筆商品至商品主檔。' + (data.raw_text_url ? ' 原文已存：' + data.raw_text_url : ''));
+          } else if (data.success && data.count === 0) {
+            showMsg('匯入完成但無新增筆數。', true);
+          } else {
+            showMsg(data.error || '匯入失敗', true);
+          }
+        } catch (e) {
+          showMsg('回應解析失敗', true);
+        }
+        if (btnImportPM) btnImportPM.disabled = false;
+      })
+      .catch(function (err) {
+        showMsg('請求失敗（網路或 CORS）', true);
+        if (btnImportPM) btnImportPM.disabled = false;
+      });
+  }
+
   function insertToSlides() {
     var url = (gasUrl.value || urlGasUrl || '').trim();
     if (!url) {
@@ -565,6 +611,8 @@
   btnLoadPaste.addEventListener('click', loadFromPaste);
   btnPasteGo.addEventListener('click', doPasteGo);
   btnExport.addEventListener('click', exportToSheets);
+  var btnImportProductMaster = document.getElementById('btnImportProductMaster');
+  if (btnImportProductMaster) btnImportProductMaster.addEventListener('click', importToProductMaster);
   var btnInsertSlides = document.getElementById('btnInsertSlides');
   if (btnInsertSlides) btnInsertSlides.addEventListener('click', insertToSlides);
 

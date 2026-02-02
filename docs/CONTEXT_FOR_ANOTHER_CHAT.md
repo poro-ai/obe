@@ -40,9 +40,9 @@
 ```
 
 - **前端**：靜態 HTML/JS（可放 GitHub Pages），與 GAS 通訊。
-- **GAS**：橋接層 — 收 Base64 PDF、上傳 GCS、呼叫 GCF、回傳 JSON；另處理 saveToSheets、Slides 側邊欄與選單。
+- **GAS**：橋接層 — 收 Base64 PDF、上傳 GCS、呼叫 GCF、回傳 JSON；另處理 saveToSheets、Slides 側邊欄與選單、**商品主檔**（`gas/product_master.js`）。
 - **GCF**：Python 3，接收 `bucket` + `blob_path`，從 GCS 讀 PDF → 上傳 Gemini File API → 結構化解析 → 回傳 `pages`。
-- **GCS**：暫存上傳的 PDF；GAS 與 GCF 皆需有權限（GAS 用服務帳號 JWT 上傳）。
+- **GCS**：暫存上傳的 PDF；圖片與原文 .txt 亦存 GCS；GAS 與 GCF 皆需有權限（GAS 用服務帳號 JWT 上傳）。
 
 ---
 
@@ -51,7 +51,7 @@
 | 層級 | 技術 | 主要目錄/檔案 |
 |------|------|----------------|
 | 前端 | 靜態 HTML/JS，Tailwind（編輯器） | `frontend/index.html`, `frontend/script.js`, `frontend/editor.html` |
-| GAS | Apps Script (V8)，HtmlService，CardService | `gas/Main.js`, `gas/web_app.js`, `gas/sidebar.html`, `gas/appsscript.json` |
+| GAS | Apps Script (V8)，HtmlService，CardService | `gas/Main.js`, `gas/web_app.js`, `gas/product_master.js`, `gas/sidebar.html`, `gas/appsscript.json` |
 | GCF | Python 3，Flask (functions_framework) | `main.py`, `src/` |
 | 儲存/API | GCS，Gemini File API | `src/clients/gcs_client.py`, `src/clients/gemini_client.py` |
 | 業務邏輯 | PDF 解析編排、圖片擷取 | `src/services/processor.py`, `src/services/pdf_parse_service.py`, `src/services/file_handler.py`, `src/services/pdf_image_extractor.py` |
@@ -113,6 +113,9 @@
 - **GCS_BUCKET**：預設 `obe-files`。
 - **GCF_PARSE_PDF_URL**：parse_pdf 的 URL（如 asia-east1）。
 - **SPREADSHEET_ID**（選填）：saveToSheets 時若已設則寫入該試算表，否則新建。
+- **PRODUCT_MASTER_SPREADSHEET_ID_PROD**：商品主檔正式環境試算表 ID。
+- **PRODUCT_MASTER_SPREADSHEET_ID_TEST**：商品主檔測試環境試算表 ID。
+- **OBE_ENVIRONMENT**（選填）：`prod`（預設）或 `test`，決定商品主檔使用哪個試算表。
 - **EDITOR_BASE_URL**：前端編輯器網址（如 GitHub Pages URL），供組裝「在瀏覽器開啟編輯器」連結。
 - **GAS_WEB_APP_URL**：GAS Web App **/exec** 部署網址；編輯器需此 URL 取解析結果與版本、POST 插入簡報。編輯器從 GitHub Pages 開啟時須用 **/exec** 且 **「誰可以存取」＝所有人**、**「執行身分」＝以我的身分執行**，否則未登入請求會 302 導向登入。**insertToSlides** 寫入使用者簡報時，該部署可另設「以造訪使用者的身分執行」或使用同一個 /exec（依需求）。
 
@@ -161,9 +164,14 @@
 - **附加元件入口**：雙選單（擴充功能 + 頂層 OBE）、首頁卡片「開啟 AI 解析側邊欄」+ 版本：vX.X.X；未發布測試安裝見 `docs/SLIDES_ADDON_DEPLOY_CHECKLIST.md`。
 - **瀏覽器編輯器**：側邊欄點按鈕 → getEditorUrlWithToken → 新分頁 editor.html?presentationId&gasUrl&token；callGcfParse 成功後 \_storeParseResultChunked 存 Cache、回傳 token。編輯器**跨域**時以 **JSONP** 取版本與 getParseResult；**gasUrl 備援**、**insertToSlides** 已實作。**圖片**：type 不區分大小寫；無 content 時顯示「圖片（目前無預覽）」+ description；有 base64 時補 data URI 前綴。
 - **PDF 圖片擷取（GCF）**：**src/services/pdf_image_extractor.py** 用 **PyMuPDF** 從 PDF 擷取每頁內嵌圖（base64 + mime），**processor.parse_from_gcs** 在 Gemini 解析後以 **\_fill_image_content** 填入 type=image 且 content 為空的區塊。每頁最多 10 張、單張最大 500KB。需**重新部署 GCF**（requirements.txt 含 pymupdf）後重新解析 PDF 才會在編輯器看到圖片。
-- **版本與 GAS 部署**：**gas/web_app.js** 為 clasp 來源；BACKEND_VERSION patch 兩位數（1.0.08）。**go 前須先更新版本號**（web_app.js + tests 預期）。編輯器用 **/exec** 時部署須「誰可以存取＝所有人」「執行身分＝以我的身分執行」。GAS 有更新時 Agent 須**提醒重新佈署**並給**本次 gas 更新說明**（.cursorrules）。
+- **版本與 GAS 部署**：**gas/web_app.js** 為 clasp 來源；BACKEND_VERSION patch 兩位數（1.0.09）。**go 前須先更新版本號**（web_app.js + tests 預期）。編輯器用 **/exec** 時部署須「誰可以存取＝所有人」「執行身分＝以我的身分執行」。GAS 有更新時 Agent 須**提醒重新佈署**並給**本次 gas 更新說明**（.cursorrules）。
 - **CI 部署**：`.github/workflows/deploy.yml` 含 **deploy-gcf**（Cloud Function）與 **deploy-gas**（clasp push）；deploy-gas 需 **CLASP_JSON**、**CLASPRC_JSON**（見 `DEPLOYMENT.md`）。
 - **測試與部署**：**go**＝更新版號 → Quick test → commit → push → **clasp push**；**「commit and push all」** 含 **clasp push**。Full：`pytest tests/`。單元含 processor.\_fill_image_content、pdf_image_extractor 邏輯（processor 整合）。涵蓋見 `docs/TEST_COVERAGE_GAP.md`。
+- **商品主檔（已實作）**：**gas/product_master.js** 依 PRD 第 5 節建立 Google Sheets 商品主檔。函式：`createProductMasterSheet(options)`、`addProduct(product, options)`、`importProducts(products, options)`、`searchProducts(filters, options)`、`getProductMasterSheetUrl(options)`。欄位含 product_id、category、images、**raw_text_url**、supplier_name、supplier_sku、product_name、package_type、cost_rmb、default_margin、cnf_price、外箱尺寸、裝箱量等 19 欄。**環境**：PRODUCT_MASTER_SPREADSHEET_ID_PROD、_TEST、OBE_ENVIRONMENT（prod/test）。執行 `quickStart()` 或 `quickStart({ env: 'test' })` 初始化。詳見 `docs/PRODUCT_MASTER_SETUP.md`。
+- **匯入至商品主檔（已實作）**：**GAS doPost action=importToProductMaster**：body 含 `pages`（編輯器解析結果）、選填 `rawText`、`env`。後端將整份原文上傳 GCS（`raw-text/{docId}/full_text.txt`）並填寫每筆商品 **raw_text_url**；每頁轉為一筆商品；圖片上傳 GCS（`product-images/{productId}/image_n.png`）後 URL 填入 **images**。**GAS 輔助**：`_uploadRawTextToGcs(text, bucket, path)`、`_uploadImageToGcs(base64, bucket, path, mime)`；`_uploadToGcs` 支援第四參數 contentType。
+- **商品主檔 API（已實作）**：**doGet action=getProducts**：參數 category、supplier_name、minPrice、maxPrice、env、callback（JSONP）；回傳 `{ success, products, count, error }`。**doGet action=getProductMasterSheetUrl**：參數 env、callback；回傳 `{ success, sheetUrl, error }`。
+- **前端**：**編輯器**「匯入至商品主檔」按鈕：POST action=importToProductMaster，顯示匯入筆數與 raw_text_url。**商品主檔／選品頁**：`frontend/products.html` — 輸入 GAS URL、篩選類別/價格、載入商品列表、開啟商品主檔試算表連結。上傳頁與編輯器皆有連結至 products.html。
+- **禮贈品／報價擴充（規劃中）**：(1) PPT/Excel 上傳與解析；(2) 報價籃與報價單編輯器；(3) Excel/PDF 報價單輸出。
 
 ---
 
@@ -177,11 +185,13 @@
 | Gemini 上傳與結構化解析 | `src/clients/gemini_client.py` |
 | 結構化結果模型 | `src/models/schema.py`（PageBlock, BlockElement） |
 | GAS Web App（上傳/Sheets） | `gas/web_app.js` |
+| GAS 商品主檔 | `gas/product_master.js`, `gas/test_product_master.js` |
 | GAS Slides 選單/側邊欄/插入 | `gas/Main.js` |
 | Slides 側邊欄 UI | `gas/sidebar.html` |
 | GAS manifest | `gas/appsscript.json`（與根目錄 appsscript.json 一致） |
 | 前端上傳頁 | `frontend/index.html`, `frontend/script.js` |
 | 前端編輯器 | `frontend/editor.html` |
+| 前端商品主檔／選品 | `frontend/products.html` |
 | 部署說明 | `DEPLOYMENT.md` |
 | Slides 附加元件檢查清單 | `docs/SLIDES_ADDON_DEPLOY_CHECKLIST.md` |
 | 版本顯示除錯 | `docs/VERSION_DISPLAY_DEBUG.md` |
@@ -190,7 +200,35 @@
 | 本機快速測 GAS JSONP（版本／getParseResult） | `scripts/test_gas_jsonp_local.py [GAS_URL]` |
 | CI 部署（GCF + GAS） | `.github/workflows/deploy.yml` |
 | 部署與 GitHub Secrets（含 CLASP_*） | `DEPLOYMENT.md` |
+| 禮贈品／報價系統 PRD | `prd/禮贈品資料庫與報價系統_PRD.md` |
+| 商品主檔建立與使用 | `docs/PRODUCT_MASTER_SETUP.md` |
+| 本 Context 文件 | `docs/CONTEXT_FOR_ANOTHER_CHAT.md` |
 
 ---
 
-以上為 OBE-Project 的架構、背景與最近實作重點，供新 Chat 作為 context 延續開發或除錯時使用。
+## 十、禮贈品／報價系統擴充
+
+### 10.1 已完成：商品主檔
+
+- **實作**：`gas/product_master.js`，詳見 `docs/PRODUCT_MASTER_SETUP.md`。
+- **欄位**（PRD 第 5 節）：product_id、category、images、raw_text_url、supplier_name、supplier_sku、product_name、package_type、cost_rmb、default_margin、cnf_price、外箱尺寸、裝箱量、內盒數量、建立/更新時間、備註。
+- **API**：createProductMasterSheet、addProduct、importProducts、searchProducts、getProductMasterSheetUrl；皆支援 `options: { spreadsheetId?, env?: "prod"|"test" }`。
+- **環境**：PRODUCT_MASTER_SPREADSHEET_ID_PROD、PRODUCT_MASTER_SPREADSHEET_ID_TEST、OBE_ENVIRONMENT。
+- **圖片**：實體存 GCS，主檔只存 URL（images 欄）。
+- **原文 URL**：整份文件原始文字存 GCS .txt，主檔 **raw_text_url** 只存 URL，供比對校正。路徑例：`gs://obe-files/raw-text/{doc_id}/full_text.txt`。
+
+### 10.2 規劃中
+
+1. **PPT / Excel 上傳與解析**：沿用 GAS → GCS/GCF；解析結果對應商品主檔欄位後匯入。
+2. **選品＋報價邏輯 UI**：前端選品、報價籃、報價單編輯器；`searchProducts()` 已可提供讀取 API。
+3. **Excel / PDF 報價單**：Excel 由 GAS 產出；PDF 需版型與產出端。
+4. **圖片上傳 GCS**：匯入時將圖片上傳 GCS 並填寫 images URL。
+5. **原文上傳 GCS**：匯入時將整份原文上傳 .txt 並填寫 raw_text_url。
+
+### 10.3 Mockup 前尚需補齊
+
+導航/Sitemap、每頁區塊與元件、流程步數與畫面對應、報價單有無列表、權限在 UI 的表現、輸出中心範圍。
+
+---
+
+以上為 OBE-Project 的架構、背景、最近實作與禮贈品擴充規劃，供新 Chat 作為 context 延續開發或除錯時使用。

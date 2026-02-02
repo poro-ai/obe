@@ -87,6 +87,23 @@ jobs:
         env:
           CLASP_JSON: ${{ secrets.CLASP_JSON }}
 
+      - name: Validate .clasp.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('.clasp.json', 'utf8');
+            if (raw.trim().startsWith('http')) {
+              console.error('CLASP_JSON 不可為網址。請設為 .clasp.json 的內容，例：{"scriptId":"你的專案ID","rootDir":"./gas"}');
+              process.exit(1);
+            }
+            const o = JSON.parse(raw);
+            if (!o || !o.scriptId) {
+              console.error('CLASP_JSON 須為含 scriptId 的 JSON，例：{"scriptId":"你的專案ID","rootDir":"./gas"}');
+              process.exit(1);
+            }
+            console.log(' .clasp.json OK, scriptId:', o.scriptId.slice(0, 8) + '...');
+          "
+
       - name: Configure clasp credentials
         run: |
           printf '%s\n' "$CLASPRC_JSON" > "$HOME/.clasprc.json"

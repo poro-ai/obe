@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBE-Project｜商品主檔／選品</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='.9em' font-size='24'>📦</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #faf8f5;
+      --card: #fffef9;
+      --border: #e8e4dc;
+      --text: #2c2825;
+      --muted: #6b6560;
+      --accent: #5c4a3a;
+    }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 0.5rem; color: var(--accent); }
+    .sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
+    .toolbar a, .toolbar button {
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+    }
+    .toolbar a:hover, .toolbar button:hover { background: var(--border); }
+    .toolbar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .toolbar button.primary:hover { background: #4a3c2f; }
+    .toolbar button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .gas-url-wrap { margin-bottom: 1rem; }
+    .gas-url-wrap label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .gas-url-wrap input { width: 100%; max-width: 560px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
+    .filters select, .filters input { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; }
+    .msg { font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .msg.ok { color: #2d6a2d; }
+    .msg.err { color: #b33; }
+    #productList { margin-top: 1rem; }
+    .product-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .product-card .name { font-weight: 500; margin-bottom: 0.25rem; }
+    .product-card .meta { font-size: 0.85rem; color: var(--muted); }
+    .product-card .meta span { margin-right: 1rem; }
+    .product-card .notes { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; max-height: 3em; overflow: hidden; text-overflow: ellipsis; }
+    .empty-state { padding: 2rem; text-align: center; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>商品主檔／選品</h1>
+  <p class="sub">從 GAS 讀取商品主檔，可篩選類別與價格區間。匯入商品請在編輯器使用「匯入至商品主檔」。</p>
+
+  <div class="toolbar">
+    <a href="index.html">← 上傳頁</a>
+    <a href="editor.html">編輯器</a>
+    <button type="button" id="btnOpenSheet" class="primary">開啟商品主檔試算表</button>
+    <button type="button" id="btnLoad" class="primary">載入商品</button>
+  </div>
+
+  <div class="gas-url-wrap">
+    <label for="gasUrl">GAS Web App 網址（/exec）</label>
+    <input type="url" id="gasUrl" placeholder="https://script.google.com/.../exec" />
+  </div>
+
+  <div class="filters">
+    <label for="filterCategory">類別</label>
+    <select id="filterCategory">
+      <option value="">全部</option>
+      <option value="文具用品">文具用品</option>
+      <option value="3C 配件">3C 配件</option>
+      <option value="生活用品">生活用品</option>
+      <option value="環保用品">環保用品</option>
+      <option value="運動休閒">運動休閒</option>
+      <option value="辦公用品">辦公用品</option>
+      <option value="其他">其他</option>
+    </select>
+    <label for="filterMinPrice">最低價 RMB</label>
+    <input type="number" id="filterMinPrice" placeholder="選填" min="0" step="0.01" style="width: 100px;" />
+    <label for="filterMaxPrice">最高價 RMB</label>
+    <input type="number" id="filterMaxPrice" placeholder="選填" min="0" step="0.01" style="width: 100px;" />
+  </div>
+
+  <p class="msg" id="msg"></p>
+  <div id="productList"></div>
+
+  <script>
+(function () {
+  var GAS_URL_KEY = 'obe_editor_gas_url';
+  var gasUrlInput = document.getElementById('gasUrl');
+  var msg = document.getElementById('msg');
+  var productList = document.getElementById('productList');
+
+  if (localStorage.getItem(GAS_URL_KEY)) {
+    gasUrlInput.value = localStorage.getItem(GAS_URL_KEY);
+  }
+
+  function showMsg(text, isError) {
+    msg.textContent = text || '';
+    msg.className = 'msg' + (text ? (isError ? ' err' : ' ok') : '');
+  }
+
+  function getBaseUrl() {
+    var url = (gasUrlInput.value || '').trim();
+    if (!url) {
+      showMsg('請輸入 GAS Web App 網址。', true);
+      return null;
+    }
+    localStorage.setItem(GAS_URL_KEY, url);
+    return url;
+  }
+
+  document.getElementById('btnOpenSheet').addEventListener('click', function () {
+    var base = getBaseUrl();
+    if (!base) return;
+    var url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'action=getProductMasterSheetUrl';
+    showMsg('取得試算表連結中…');
+    fetch(url, { method: 'GET', mode: 'cors' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success && data.sheetUrl) {
+          window.open(data.sheetUrl, '_blank');
+          showMsg('已開啟商品主檔試算表。');
+        } else {
+          showMsg(data.error || '尚未建立商品主檔，請先在 GAS 執行 quickStart()。', true);
+        }
+      })
+      .catch(function (err) {
+        showMsg('請求失敗：' + err.message, true);
+      });
+  });
+
+  document.getElementById('btnLoad').addEventListener('click', function () {
+    var base = getBaseUrl();
+    if (!base) return;
+    var params = new URLSearchParams();
+    params.set('action', 'getProducts');
+    var cat = document.getElementById('filterCategory').value;
+    if (cat) params.set('category', cat);
+    var minP = document.getElementById('filterMinPrice').value;
+    if (minP) params.set('minPrice', minP);
+    var maxP = document.getElementById('filterMaxPrice').value;
+    if (maxP) params.set('maxPrice', maxP);
+    var url = base + (base.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+    showMsg('載入中…');
+    productList.innerHTML = '';
+    fetch(url, { method: 'GET', mode: 'cors' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          showMsg(data.error || '載入失敗', true);
+          return;
+        }
+        var products = data.products || [];
+        showMsg('共 ' + data.count + ' 筆商品。');
+        if (products.length === 0) {
+          productList.innerHTML = '<div class="empty-state">尚無符合條件的商品。請先建立商品主檔並匯入資料。</div>';
+          return;
+        }
+        var html = '';
+        products.forEach(function (p) {
+          html += '<div class="product-card">';
+          html += '<div class="name">' + (p.product_name || p.product_id || '—').replace(/</g, '&lt;') + '</div>';
+          html += '<div class="meta">';
+          if (p.category) html += '<span>類別：' + p.category + '</span>';
+          if (p.supplier_name) html += '<span>供應商：' + p.supplier_name + '</span>';
+          if (p.cost_rmb != null && p.cost_rmb !== '') html += '<span>RMB ' + Number(p.cost_rmb).toFixed(2) + '</span>';
+          html += '</div>';
+          if (p.notes) html += '<div class="notes">' + (p.notes + '').slice(0, 120).replace(/</g, '&lt;') + (p.notes.length > 120 ? '…' : '') + '</div>';
+          html += '</div>';
+        });
+        productList.innerHTML = html;
+      })
+      .catch(function (err) {
+        showMsg('請求失敗（網路或 CORS）：' + err.message, true);
+      });
+  });
+})();
+  </script>
+</body>
+</html>
