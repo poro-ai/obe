@@ -41,7 +41,9 @@
 - **每次修改完系統，都要做 unittest 與 integration test**，再進行 commit / push。
 - **Code 有更動時，Agent 須自動執行 test**：完成程式變更後先跑 test，通過後再進行 commit / push；若使用者要求「commit and push」或「commit and push all」，須先跑 test，通過才提交，失敗則不提交並回報；**提交並 push 後一律執行 `npx @google/clasp push`** 將 gas/ 同步到 Apps Script。
 - **GAS 有更新時，commit message 須標註**：若本次 commit 包含 `gas/` 下任何檔案的變更，commit message 必須明確提到 GAS 更新，例如前綴或內文含 **`GAS:`**、**`gas 更新`**、**`chore(gas):`** 等，以便從 git log 一眼看出哪幾次提交有改 GAS。
-- **使用者說「go」**：等同「test then commit and push all」— 先跑 Quick test，通過後再 commit、push 全部變更，**最後執行 `npx @google/clasp push`**。失敗則不提交並回報。
+- **GAS 有更新時，須提醒使用者重新佈署**：當本次變更包含 `gas/` 下任何檔案（例如執行 go 或 clasp push 後），Agent 必須在完成時**提醒使用者**：到 Apps Script 建立新版本並在「管理部署」中將 Web App 改為該版本，或使用「測試部署」(/dev) 測試；否則 /exec 仍會跑舊版程式。
+- **GAS 有更新時，須給出本次 gas 更新說明（comments）**：當本次變更包含 `gas/` 下任何檔案，Agent 在完成時除提醒重新佈署外，必須**簡短列出本次 gas 變更重點**（例如：web_app.js 版號 1.0.08、sidebar.html 圖片 type 不區分大小寫），方便使用者一眼知道改了什麼。
+- **使用者說「go」**：等同「test then commit and push all」— 先跑 Quick test，通過後再 commit、push 全部變更，**最後執行 `npx @google/clasp push`**。失敗則不提交並回報。若本次有改 gas/，完成後須提醒使用者重新佈署，並給出本次 gas 更新說明（見上兩條）。
 - **只跑必要測試，避開無謂重複**：
   - **Quick（日常／go 預設）**：`python -m pytest tests/unit/ -v --tb=short` — 僅單元測試（約 20–40s），不打 GCF/GAS，不需網路。適合：僅改 gas/ 或 frontend/、僅改 Python、或 go 時快速確認。
   - **Full（發布前／CI）**：`python -m pytest tests/ -v --tb=short` — 含整合（test_cloud_connection、test_doget），需網路與 GAS_WEBAPP_URL。適合：要發布前、或改動到上傳／GAS 連線邏輯時。

@@ -14,14 +14,41 @@ from typing import Optional
 
 from src.clients.gcs_client import GCSClient
 from src.clients.gemini_client import GeminiFileClient
-from src.models.schema import PageBlock
+from src.models.schema import BlockElement, PageBlock
 from src.services.file_handler import FileHandler
+from src.services.pdf_image_extractor import extract_images_by_page
 
 logger = logging.getLogger(__name__)
 
 # 大檔案（如 150MB）輪詢等待時間（秒），配合 GCF 540s Timeout
 DEFAULT_FILE_READY_TIMEOUT = 540.0
 DEFAULT_POLL_INTERVAL = 2.0
+
+
+def _fill_image_content(
+    blocks: list[PageBlock],
+    images_by_page: dict[int, list[tuple[str, str]]],
+) -> list[PageBlock]:
+    """
+    將擷取出的 PDF 圖片填入 type=image 且 content 為空的區塊。
+    images_by_page: page_index_0based -> [(base64, mime_type), ...]
+    """
+    out: list[PageBlock] = []
+    for block in blocks:
+        page_idx = (block.page or 1) - 1
+        image_list = list(images_by_page.get(page_idx, []))
+        new_elements: list[BlockElement] = []
+        for el in block.elements:
+            if (el.type or "").lower() == "image" and not (el.content or "").strip() and image_list:
+                b64, mime = image_list.pop(0)
+                content = f"data:{mime};base64,{b64}"
+                new_elements.append(
+                    BlockElement(type="image", content=content, description=el.description or "")
+                )
+            else:
+                new_elements.append(el)
+        out.append(PageBlock(page=block.page, elements=new_elements))
+    return out
 
 
 class PDFProcessor:
@@ -62,6 +89,8 @@ class PDFProcessor:
         logger.info("parse_from_gcs: reading blob %s", blob_path)
         data = gcs.read_blob_bytes(blob_path)
 
+        images_by_page = extract_images_by_page(data)
+
         if self._file_handler is not None:
             file_uri = self._file_handler.upload_from_stream(
                 data=data,
@@ -78,4 +107,5 @@ class PDFProcessor:
             )
 
         logger.info("parse_from_gcs: file ready, parsing structured content")
-        return self._gemini.parse_pdf_structured(file_uri)
+        blocks = self._gemini.parse_pdf_structured(file_uri)
+        return _fill_image_content(blocks, images_by_page)

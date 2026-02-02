@@ -1,10 +1,11 @@
 # 部署備忘：GitHub Secrets 與連結
 
-## GitHub Actions 只部署 GCF，不部署 GAS
+## GitHub Actions 部署 GCF + GAS
 
-- **push 到 main 時**：`.github/workflows/deploy.yml` 會執行，僅部署 **Google Cloud Function (parse_pdf)** 到 GCP，不會更新 **Google Apps Script (GAS)**。
-- **GAS 程式碼**（`gas/` 目錄）需在本機執行 **`npx @google/clasp push`** 才會同步到 script.google.com。
-- 原因：GAS 部署需 clasp 登入與 `.clasp.json`（scriptId），該檔在 .gitignore 且 CI 無 clasp 憑證，故未納入 workflow。
+- **push 到 main 時**：`.github/workflows/deploy.yml` 會依序執行：
+  1. **Deploy Cloud Function**：部署 **parse_pdf** 到 GCP。
+  2. **Deploy GAS**：以 clasp push 將 **gas/** 同步到 Google Apps Script（需先設定 `CLASP_JSON`、`CLASPRC_JSON` 兩個 secrets，見下表）。
+- 若未設定 GAS 相關 secrets，`deploy-gas` job 會失敗；此時仍可僅在本機執行 **`npx @google/clasp push`** 手動同步 GAS。
 
 **標準流程（commit + clasp + push）**：每次改動後建議一併執行 Git 提交、GAS 推送、GitHub 推送：
 ```bash
@@ -45,6 +46,8 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions
 | **GCP_PROJECT_ID** | GCP 專案 ID，用於部署 Cloud Functions | 例如：`obe-project-485614` |
 | **GCP_SA_KEY** | 具備 Cloud Functions 部署權限的服務帳號 **整份 JSON 金鑰內容** | 從 GCP Console 建立服務帳號並下載 JSON，將檔案內容整段貼上 |
 | **GEMINI_API_KEY** | Gemini API 金鑰，供 GCF 呼叫 File API 上傳／解析 PDF | 從 [Google AI Studio](https://aistudio.google.com/apikey) 取得，貼上字串 |
+| **CLASP_JSON** | （GAS 用）本機 `.clasp.json` 內容，供 CI 執行 clasp push | 單行 JSON，例：`{"scriptId":"你的 Apps Script 專案 ID","rootDir":"./gas"}` |
+| **CLASPRC_JSON** | （GAS 用）本機 clasp login 後 `~/.clasprc.json` 的**完整內容** | 在本機執行 `clasp login` 後，將 `~/.clasprc.json`（或 Windows `%USERPROFILE%\.clasprc.json`）整份貼上 |
 
 ---
 

@@ -1,7 +1,10 @@
-# OBE-Project：部署 GCF（150MB PDF 解析用，1Gi / 540s）
-# 注意：本 workflow 僅部署「Google Cloud Function (parse_pdf)」，不會更新 Google Apps Script (GAS)。
-# GAS 程式碼在 gas/ 目錄，需在本機執行 npx @google/clasp push 才會同步到 script.google.com。
-name: Deploy to Google Cloud Functions
+# OBE-Project：部署 GCF + GAS
+# - GCF：parse_pdf Cloud Function（150MB PDF 解析，1Gi / 540s）
+# - GAS：gas/ 目錄以 clasp push 同步到 Google Apps Script
+#   需在 GitHub repo Settings → Secrets 新增：
+#   - CLASP_JSON：本機 .clasp.json 內容，例 {"scriptId":"xxx","rootDir":"./gas"}（單行）
+#   - CLASPRC_JSON：本機 clasp login 後 ~/.clasprc.json 的完整內容
+name: Deploy (GCF + GAS)
 
 on:
   push:
@@ -14,7 +17,8 @@ env:
   RUNTIME: python311
 
 jobs:
-  deploy:
+  deploy-gcf:
+    name: Deploy Cloud Function
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +66,32 @@ jobs:
             exit 1
           fi
 
-      - name: Reminder - GAS not deployed by this workflow
+  deploy-gas:
+    name: Deploy GAS (clasp push)
+    runs-on: ubuntu-latest
+    needs: deploy-gcf
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Configure .clasp.json
         run: |
-          echo "::notice:: 本 workflow 僅部署 GCF。Google Apps Script (gas/) 未在此更新。"
-          echo "若需更新 GAS 程式碼，請在本機執行: npx @google/clasp push"
+          printf '%s\n' "$CLASP_JSON" > .clasp.json
+        env:
+          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+
+      - name: Configure clasp credentials
+        run: |
+          printf '%s\n' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Push to Google Apps Script
+        run: npx clasp push --force
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from src.clients.gcs_client import GCSClient
 from src.clients.gemini_client import GeminiFileClient
 from src.models.schema import BlockElement, PageBlock
-from src.services.processor import PDFProcessor
+from src.services.processor import PDFProcessor, _fill_image_content
 
 
 @pytest.fixture
@@ -80,3 +80,44 @@ def test_parse_from_gcs_gemini_raises_propagates(
     processor = PDFProcessor(gcs_client=mock_gcs, gemini_client=mock_gemini)
     with pytest.raises(TimeoutError):
         processor.parse_from_gcs("x.pdf")
+
+
+def test_fill_image_content_fills_empty_image_elements() -> None:
+    """_fill_image_content 應將 type=image 且 content 為空的區塊填入 data URI。"""
+    blocks = [
+        PageBlock(
+            page=1,
+            elements=[
+                BlockElement(type="image", content="", description="圖1"),
+                BlockElement(type="text", content="hi", description=""),
+                BlockElement(type="image", content="", description="圖2"),
+            ],
+        ),
+    ]
+    images_by_page = {
+        0: [
+            ("base64img1", "image/png"),
+            ("base64img2", "image/jpeg"),
+        ],
+    }
+    result = _fill_image_content(blocks, images_by_page)
+    assert len(result) == 1
+    assert result[0].page == 1
+    assert result[0].elements[0].type == "image"
+    assert result[0].elements[0].content == "data:image/png;base64,base64img1"
+    assert result[0].elements[0].description == "圖1"
+    assert result[0].elements[1].content == "hi"
+    assert result[0].elements[2].type == "image"
+    assert result[0].elements[2].content == "data:image/jpeg;base64,base64img2"
+
+
+def test_fill_image_content_skips_when_no_images_for_page() -> None:
+    """_fill_image_content 無該頁圖片時不改動 content。"""
+    blocks = [
+        PageBlock(
+            page=1,
+            elements=[BlockElement(type="image", content="", description="圖")],
+        ),
+    ]
+    result = _fill_image_content(blocks, {})
+    assert result[0].elements[0].content == ""
