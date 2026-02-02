@@ -90,8 +90,8 @@ jobs:
       - name: Configure clasp credentials
         run: |
           printf '%s\n' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
 
       - name: Push to Google Apps Script
         run: npx clasp push --force
-        env:
-          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
